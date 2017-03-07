@@ -1,0 +1,198 @@
+/**
+ * Copyright 2014-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE-examples file in the root directory of this source tree.
+ */
+
+#include <fbzmq/examples/server/ZmqServer.h>
+
+#include <fbzmq/examples/common/Constants.h>
+#include <fbzmq/examples/if/gen-cpp2/Example_types.h>
+
+namespace fbzmq {
+namespace example {
+
+ZmqServer::ZmqServer(
+  fbzmq::Context& zmqContext,
+  const std::string& primitiveCmdUrl,
+  const std::string& stringCmdUrl,
+  const std::string& thriftCmdUrl,
+  const std::string& pubUrl)
+  : primitiveCmdUrl_(primitiveCmdUrl),
+    stringCmdUrl_(stringCmdUrl),
+    thriftCmdUrl_(thriftCmdUrl),
+    pubUrl_(pubUrl),
+    // init sockets
+    primitiveCmdSock_(zmqContext),
+    stringCmdSock_(zmqContext),
+    thriftCmdSock_(zmqContext),
+    pubSock_(zmqContext) {
+  prepare();
+}
+
+void
+ZmqServer::prepare() noexcept {
+  LOG(INFO) << "Server: Binding primitiveCmdUrl_ '" << primitiveCmdUrl_ << "'";
+  primitiveCmdSock_.bind(fbzmq::SocketUrl{primitiveCmdUrl_}).value();
+
+  LOG(INFO) << "Server: Binding stringCmdUrl_ '" << stringCmdUrl_ << "'";
+  stringCmdSock_.bind(fbzmq::SocketUrl{stringCmdUrl_}).value();
+
+  LOG(INFO) << "Server: Binding thriftCmdUrl_ '" << thriftCmdUrl_ << "'";
+  thriftCmdSock_.bind(fbzmq::SocketUrl{thriftCmdUrl_}).value();
+
+  // attach callbacks for primitive type command
+  addSocket(
+      fbzmq::RawZmqSocketPtr{*primitiveCmdSock_},
+      ZMQ_POLLIN,
+      [this](int) noexcept{
+    LOG(INFO) << "Received command request on primitiveCmdSock_";
+    processPrimitiveCommand();
+  });
+
+  // attach callbacks for string type command
+  addSocket(
+      fbzmq::RawZmqSocketPtr{*stringCmdSock_},
+      ZMQ_POLLIN,
+      [this](int) noexcept{
+    LOG(INFO) << "Received command request on stringCmdSock_";
+    processStringCommand();
+  });
+
+  // attach callbacks for thrift type command
+  addSocket(
+      fbzmq::RawZmqSocketPtr{*thriftCmdSock_},
+      ZMQ_POLLIN,
+      [this](int) noexcept{
+    LOG(INFO) << "Received command request on thriftCmdSock_";
+    processThriftCommand();
+  });
+}
+
+void
+ZmqServer::processPrimitiveCommand() noexcept {
+  // recv request
+  auto maybeMsg = primitiveCmdSock_.recvOne();
+  if (maybeMsg.hasError()) {
+    LOG(ERROR) << "recv primitive request failed: " << maybeMsg.error();
+    return;
+  }
+
+  // read out primitive (uin32_t in this example) request
+  auto maybeUint32t = maybeMsg->template read<uint32_t>();
+  if (maybeUint32t.hasError()) {
+    LOG(ERROR) << "read primitive request failed: " << maybeUint32t.error();
+    return;
+  }
+
+  uint32_t request = maybeUint32t.value();
+  VLOG(2) << "received request: " << request;
+
+  // process request (simply add one)
+  uint32_t reply = request + 1;
+
+  // send back reply message
+  auto replyMsg = fbzmq::Message::from(reply).value();
+  VLOG(2) << "sending reply: " << reply;
+  auto rc = primitiveCmdSock_.sendOne(replyMsg);
+  if (rc.hasError()) {
+    LOG(ERROR) << "send reply faild: " << rc.error();
+  }
+}
+
+void
+ZmqServer::processStringCommand() noexcept {
+  // recv request
+  auto maybeMsg = stringCmdSock_.recvOne();
+  if (maybeMsg.hasError()) {
+    LOG(ERROR) << "recv string request failed: " << maybeMsg.error();
+    return;
+  }
+
+  // read out string request
+  auto maybeString = maybeMsg.value().template read<std::string>();
+  if (maybeString.hasError()) {
+    LOG(ERROR) << "read string request failed: " << maybeString.error();
+    return;
+  }
+
+  const auto& request = maybeString.value();
+  VLOG(2) << "received request: " << request;
+
+  // process request (simply append " world")
+  std::string reply = request + " world";
+
+  // send back reply message
+  auto replyMsg = fbzmq::Message::from(reply).value();
+  VLOG(2) << "sending reply: " << reply;
+  auto rc = stringCmdSock_.sendOne(replyMsg);
+  if (rc.hasError()) {
+    LOG(ERROR) << "send reply faild: " << rc.error();
+  }
+}
+
+void
+ZmqServer::processThriftCommand() noexcept {
+  // read out thrift command
+  auto maybeThriftObj =
+    thriftCmdSock_.recvThriftObj<thrift::Request>(serializer_);
+  if (maybeThriftObj.hasError()) {
+    LOG(ERROR) << "read thrift request failed: " << maybeThriftObj.error();
+    return;
+  }
+
+  const auto& request = maybeThriftObj.value();
+  const auto& key = request.key;
+  const auto& value = request.value;
+
+  switch (request.cmd) {
+    case thrift::Command::KEY_SET: {
+      VLOG(2) << "Received KEY_SET command (" << key << ": " << *value << ")";
+      kvStore_[key] = *value;
+
+      thrift::Response response;
+      response.success = true;
+      auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
+      if (rc.hasError()) {
+        LOG(ERROR) << "Sent response faild: " << rc.error();
+        return;
+      }
+      break;
+    }
+
+    case thrift::Command::KEY_GET: {
+      VLOG(2) << "Received KEY_GET command (" << key << ")";
+      auto it = kvStore_.find(key);
+
+      thrift::Response response;
+      if (it == kvStore_.end()) {
+        response.success = false;
+      } else {
+        response.success = true;
+        response.value = it->second;
+      }
+
+      auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
+      if (rc.hasError()) {
+        LOG(ERROR) << "Sent response faild: " << rc.error();
+        return;
+      }
+      break;
+    }
+
+    default: {
+      LOG(ERROR) << "Unknow thrift command: "
+                 << static_cast<int>(request.cmd);
+      break;
+    }
+  }
+
+  for (const auto& keyVal : kvStore_) {
+    VLOG(2) << "key: " << keyVal.first << " -> value: " << keyVal.second;
+  }
+}
+
+} // namespace example
+} // namespace fbzmq
