@@ -23,7 +23,7 @@ TEST(SocketMonitor, ConnectSync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test"};
+  const std::string kServerUrl{"ipc://test_connect_sync"};
 
   // atomic barriers to synchronize among threads
   std::atomic<bool> isRunning{false};
@@ -82,7 +82,7 @@ TEST(SocketMonitor, AcceptSync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test"};
+  const std::string kServerUrl{"ipc://test_accept_sync"};
 
   // atomic barriers to synchronize among threads
   std::atomic<bool> isRunning{false};
@@ -141,7 +141,7 @@ TEST(SocketMonitor, ConnectAsync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test"};
+  const std::string kServerUrl{"ipc://test_connect_async"};
 
   // we accumulate monitoring messages here
   std::set<fbzmq::SocketMonitorMessage> messages;
