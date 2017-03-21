@@ -1,0 +1,13 @@
+language: cpp
+sudo: required
+compiler:
+- clang
+- gcc
+install:
+- cd build
+- sudo bash deps_ubuntu_14.04.sh
+script:
+- cd build
+- cmake ..
+- make
+- make test
