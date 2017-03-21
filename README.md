@@ -1,9 +1,12 @@
 # fbzmq
-`fbzmq` is a lightweight C++ wrapper over `libzmq` which leverages newer C++
-constructs and stricter type checking. Most notably it provides the ability to
-send/receive `thrift objects` over wire as messages and a nice async framework.
-Together, these abstractions make writing message passing applications much
-easier.
+`fbzmq` provides a framework for writing services in C++ while leveraging
+awesomeness of `libzmq` (message passing semantics). At a high level it provides
+- Lightweight C++ wrapper over `libzmq` which leverages newer C++ constructs
+  and stricter type checking. Most notably it provides the ability to
+  send/receive `thrift objects` as messages over wire without worrying about
+  wire encoding/decoding protocols.
+- Powerful `Async Framework` with EventLoop, Timeouts, SignalHandler and more to
+  enable developers write asynchronous applications efficiently.
 
 ## Examples
 Here is a simple example demonstrating some powerful abstractions of `fbzmq`
