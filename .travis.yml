@@ -6,7 +6,7 @@ compiler:
 - gcc
 install:
 - cd build
-- sudo bash deps_ubuntu_14.04.sh
+- sudo -E bash deps_ubuntu_14.04.sh
 script:
 - cd build
 - cmake ..

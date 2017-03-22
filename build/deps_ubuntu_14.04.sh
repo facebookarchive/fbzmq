@@ -2,7 +2,7 @@
 
 . "deps_common.sh"
 
-sudo apt-get install libdouble-conversion-dev \
+apt-get install libdouble-conversion-dev \
   libgtest-dev \
   libssl-dev \
   cmake \
@@ -36,10 +36,10 @@ sudo apt-get install libdouble-conversion-dev \
 # install gtest
 pushd .
 cd "/usr/src/gtest" || return
-sudo cmake CMakeLists.txt
-sudo make
+cmake CMakeLists.txt
+make
 for file in *.a; do
-  sudo cp "$file" /usr/lib
+  cp "$file" /usr/lib
 done
 popd
 

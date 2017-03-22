@@ -14,7 +14,7 @@ install_zstd() {
   fi
   cd zstd
   make
-  sudo make install
+  make install
   popd
 }
 
@@ -26,7 +26,7 @@ install_mstch() {
   cd mstch
   cmake .
   make
-  sudo make install
+  make install
   popd
 }
 
@@ -39,7 +39,7 @@ install_wangle() {
   git checkout master
   cmake .
   make
-  sudo make install
+  make install
   popd
 }
 
@@ -53,7 +53,7 @@ install_libzmq() {
   ./configure
   make
   make check
-  sudo make install
+  make install
   popd
 }
 
@@ -66,7 +66,7 @@ install_libsodium() {
   ./configure
   make
   make check
-  sudo make install
+  make install
   popd
 }
 
@@ -83,8 +83,8 @@ install_folly() {
   autoreconf -ivf
   ./configure
   make
-  sudo make install
-  sudo ldconfig
+  make install
+  ldconfig
   popd
 }
 
@@ -100,7 +100,7 @@ install_fbthrift() {
   autoreconf -if
   ./configure
   make
-  sudo make install
-  sudo ldconfig
+  make install
+  ldconfig
   popd
 }

@@ -2,7 +2,7 @@
 
 . "deps_common.sh"
 
-sudo yum install -y \
+yum install -y \
     openssl-devel \
     openssl-libs \
     make \
@@ -28,7 +28,7 @@ if [ ! -e "double-conversion" ]; then
   git clone https://github.com/floitsch/double-conversion.git double-conversion
   cd double-conversion
   cmake . -DBUILD_SHARED_LIBS=ON
-  sudo make install
+  make install
   cd ..
 fi
 
