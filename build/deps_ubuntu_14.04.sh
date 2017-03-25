@@ -5,15 +5,11 @@
 apt-get install libdouble-conversion-dev \
   libgtest-dev \
   libssl-dev \
-  cmake \
-  make \
   zip \
-  git \
   autoconf \
   autoconf-archive \
   automake \
   libtool \
-  g++ \
   libboost-all-dev \
   libevent-dev \
   flex \

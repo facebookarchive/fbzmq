@@ -76,7 +76,7 @@ install_folly() {
     git clone https://github.com/facebook/folly
   fi
   cd folly/folly
-  git checkout master
+  git checkout v2017.03.20.00
   if [[ -x "./build/deps_$1.sh" ]] ; then
     "./build/deps_$1.sh"
   fi
