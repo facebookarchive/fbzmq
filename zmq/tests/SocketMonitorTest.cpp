@@ -9,12 +9,18 @@
 
 #include <thread>
 
+#include <folly/Format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <fbzmq/zmq/SocketMonitor.h>
 
 namespace fbzmq {
+
+std::string getSocketUrl(const std::string& urlPrefix) {
+  auto tid = std::hash<std::thread::id>()(std::this_thread::get_id());
+  return folly::sformat("ipc://{}_{}", urlPrefix, tid);
+}
 
 //
 // Validate that monitoring socket can receive CONNECT event
@@ -23,7 +29,7 @@ TEST(SocketMonitor, ConnectSync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test_connect_sync"};
+  const std::string kServerUrl{getSocketUrl("test_connect_sync")};
 
   // atomic barriers to synchronize among threads
   std::atomic<bool> isRunning{false};
@@ -82,7 +88,7 @@ TEST(SocketMonitor, AcceptSync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test_accept_sync"};
+  const std::string kServerUrl{getSocketUrl("test_accept_sync")};
 
   // atomic barriers to synchronize among threads
   std::atomic<bool> isRunning{false};
@@ -141,7 +147,7 @@ TEST(SocketMonitor, ConnectAsync) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> client(ctx);
   fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_SERVER> server(ctx);
-  const std::string kServerUrl{"ipc://test_connect_async"};
+  const std::string kServerUrl{getSocketUrl("test_connect_async")};
 
   // we accumulate monitoring messages here
   std::set<fbzmq::SocketMonitorMessage> messages;
