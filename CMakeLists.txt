@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 include_directories(${CMAKE_SOURCE_DIR}/..)
 
 # External third-party libraries
+find_library(DOUBLECONV double-conversion)
 find_library(GFLAGS gflags)
 find_library(GLOG glog)
 find_library(PTHREAD pthread)
@@ -30,14 +31,22 @@ add_library(fbzmq STATIC
   async/ZmqEventLoop.cpp
   async/ZmqThrottle.cpp
   async/ZmqTimeout.cpp
+  service/logging/LogSample.cpp
+  service/monitor/ZmqMonitorClient.cpp
+  service/stats/ExportedStat.cpp
+  service/stats/ThreadData.cpp
   zmq/Common.cpp
   zmq/Context.cpp
   zmq/Message.cpp
   zmq/Socket.cpp
   zmq/SocketMonitor.cpp
+  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.cpp
+  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.cpp
+  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.cpp
 )
 
 target_link_libraries(fbzmq
+  ${DOUBLECONV}
   ${THRIFT}
   ${THRIFTCPP2}
   ${THRIFTPROTOCOL}
@@ -74,6 +83,41 @@ install(FILES
   DESTINATION include/fbzmq/zmq
 )
 
+install(FILES
+  service/logging/LogSample.h
+  DESTINATION include/fbzmq/service/logging
+)
+
+install(FILES
+  service/monitor/ZmqMonitor.h
+  service/monitor/ZmqMonitorClient.h
+  DESTINATION include/fbzmq/service/monitor
+)
+
+install(FILES
+  service/stats/ExportedStat.h
+  service/stats/ExportType.h
+  service/stats/ThreadData.h
+  DESTINATION include/fbzmq/service/stats
+)
+
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/service/if)
+
+set(THRIFTC2
+    python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
+
+add_custom_command(
+  OUTPUT
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.h
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.h
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.h
+  COMMAND
+    ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/service/if ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
+)
+
 #
 # Unit-tests
 #
@@ -93,9 +137,7 @@ if (BUILD_TESTS)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/if)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/examples/if)
-
-  set(THRIFTC2
-      python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests)
 
   add_custom_command(
     OUTPUT
@@ -165,6 +207,21 @@ if (BUILD_TESTS)
   add_executable(socket_monitor_test
     zmq/tests/SocketMonitorTest.cpp
   )
+  add_executable(log_sample_test
+    service/logging/tests/LogSampleTest.cpp
+  )
+  add_executable(thread_data_test
+    service/stats/tests/ThreadDataTest.cpp
+  )
+  add_executable(zmq_monitor_test
+    service/monitor/tests/ZmqMonitorTest.cpp
+  )
+  add_executable(zmq_monitor_client_test
+    service/monitor/tests/ZmqMonitorClientTest.cpp
+  )
+  add_executable(zmq_monitor_sample
+    service/monitor/ZmqMonitorSample.cpp
+  )
   add_executable(zmq_server_example
     examples/common/Constants.cpp
     examples/server/ZmqServer.cpp
@@ -222,6 +279,29 @@ if (BUILD_TESTS)
     ${GTEST}
     ${GTEST_MAIN}
   )
+  target_link_libraries(log_sample_test
+    fbzmq
+    ${GTEST}
+    ${GTEST_MAIN}
+  )
+  target_link_libraries(thread_data_test
+    fbzmq
+    ${GTEST}
+    ${GTEST_MAIN}
+  )
+  target_link_libraries(zmq_monitor_test
+    fbzmq
+    ${GTEST}
+    ${GTEST_MAIN}
+  )
+  target_link_libraries(zmq_monitor_client_test
+    fbzmq
+    ${GTEST}
+    ${GTEST_MAIN}
+  )
+  target_link_libraries(zmq_monitor_sample
+    fbzmq
+  )
   target_link_libraries(zmq_server_example
     fbzmq
     fbzmq-examples-if
@@ -240,5 +320,9 @@ if (BUILD_TESTS)
   add_test(MessageTest message_test)
   add_test(SocketTest socket_test)
   add_test(SocketMonitorTest socket_monitor_test)
+  add_test(LogSampleTest log_sample_test)
+  add_test(ThreadDataTest thread_data_test)
+  add_test(ZmqMonitorTest zmq_monitor_test)
+  add_test(ZmqMonitorClientTest zmq_monitor_client_test)
 
 endif()
