@@ -8,6 +8,7 @@
  */
 
 namespace cpp2 fbzmq.thrift
+namespace py fbzmq.Monitor
 
 typedef map<string, Counter>
   (cpp.type = "std::unordered_map<std::string, Counter>") CounterMap
