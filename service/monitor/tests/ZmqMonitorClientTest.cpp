@@ -31,7 +31,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
       std::string{"inproc://monitor-pub"},
       context);
 
-  auto monitorThread = folly::make_unique<std::thread>([zmqMonitor]() {
+  auto monitorThread = std::make_unique<std::thread>([zmqMonitor]() {
     LOG(INFO) << "ZmqMonitor thread starting";
     zmqMonitor->run();
     LOG(INFO) << "ZmqMonitor thread finished";
@@ -49,7 +49,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
 
   // Test with a ZmqMonitor client
   auto zmqMonitorClient =
-      folly::make_unique<ZmqMonitorClient>(
+      std::make_unique<ZmqMonitorClient>(
           context, std::string{"inproc://monitor-rep"});
   LOG(INFO) << "monitor client created...";
 
@@ -82,7 +82,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
 
   // Check the new api of DUMP_ALL_COUNTER_DATA and PUB/SUB as well.
   // First put subscriber in a separate thread to avoid control-flow blocking.
-  auto subscriberThread = folly::make_unique<std::thread>([&context]() {
+  auto subscriberThread = std::make_unique<std::thread>([&context]() {
     LOG(INFO) << "subscriber thread running";
     auto serializer = apache::thrift::CompactSerializer();
 
