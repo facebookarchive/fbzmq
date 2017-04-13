@@ -46,13 +46,17 @@ namespace fbzmq {
 
 TEST(Socket, Moving) {
   // move construct and move assign
-  fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub1;
+  fbzmq::Context ctx;
+  const KeyPair keyPair = fbzmq::util::genKeyPair();
+  fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub1(
+      ctx, folly::none, keyPair, NonblockingFlag{true});
   fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub2(std::move(pub1));
   fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub3;
   pub3 = std::move(pub2);
-  // try to set an option on a socket that doesn't exist since the
-  // default constructor does not creat the underlying zmq socket
-  EXPECT_TRUE(pub3.setSockOpt(ZMQ_IDENTITY, "a", 1).hasError());
+  EXPECT_TRUE(pub3.isNonBlocking());
+  const KeyPair sockKeyPair = pub3.getKeyPair().value();
+  EXPECT_EQ(keyPair.privateKey, sockKeyPair.privateKey);
+  EXPECT_EQ(keyPair.publicKey, sockKeyPair.publicKey);
 }
 
 TEST(Socket, SetKeepAlive) {
@@ -86,11 +90,18 @@ TEST(Socket, RecvNonBlocking) {
   //make a non blocking socket
   fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(
     ctx, folly::none, folly::none, NonblockingFlag{true});
-  rep.bind(fbzmq::SocketUrl{"inproc://test_basic_stuff"}).value();
+
+  // Move into another socket (use move copy)
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep2 = std::move(rep);
+
+  // Move into another socket (use move constructor)
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep3(std::move(rep2));
+
+  rep3.bind(fbzmq::SocketUrl{"inproc://test_basic_stuff"}).value();
   // expect error when receiving since nothing should be available to read
   // and it won't block
-  EXPECT_TRUE(rep.recvMultiple().hasError());
-  rep.unbind(fbzmq::SocketUrl{"inproc://test_basic_stuff"}).value();
+  EXPECT_TRUE(rep3.recvMultiple().hasError());
+  rep3.unbind(fbzmq::SocketUrl{"inproc://test_basic_stuff"}).value();
 }
 
 TEST(Socket, BindUndind) {

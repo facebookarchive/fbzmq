@@ -278,6 +278,20 @@ class SocketImpl {
   bool hasMore() noexcept;
 
   /**
+   * Return true if socket is blocking or not
+   */
+  bool isNonBlocking() const {
+    return baseFlags_ & ZMQ_DONTWAIT;
+  }
+
+  /**
+   * Return assocaited key pair if any
+   */
+  folly::Optional<KeyPair> getKeyPair() const {
+    return keyPair_;
+  }
+
+  /**
    * "safer" pointer to raw object, mainly for poll. you will need
    * to explicitly cast it to void* if you need to hehehehe
    */
@@ -347,7 +361,7 @@ class SocketImpl {
   void* ctxPtr_{nullptr};
 
   // the crypto key pair.
-  const folly::Optional<KeyPair> keyPair_;
+  folly::Optional<KeyPair> keyPair_;
 
   // public keys for use with servers
   std::unordered_map<std::string /* server url */, std::string /* pub key */>

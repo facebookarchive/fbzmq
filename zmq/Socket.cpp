@@ -82,14 +82,23 @@ SocketImpl::~SocketImpl() noexcept {
   close();
 }
 
-SocketImpl::SocketImpl(SocketImpl&& other) noexcept : ptr_(other.ptr_) {
+SocketImpl::SocketImpl(SocketImpl&& other) noexcept
+    : baseFlags_(other.baseFlags_),
+      ptr_(other.ptr_),
+      ctxPtr_(other.ctxPtr_),
+      keyPair_(std::move(other.keyPair_)) {
   other.ptr_ = nullptr;
 }
 
 SocketImpl&
 SocketImpl::operator=(SocketImpl&& other) noexcept {
-  SocketImpl tmp(std::move(other));
-  std::swap(ptr_, tmp.ptr_);
+  baseFlags_ = other.baseFlags_;
+  ptr_ = other.ptr_;
+  ctxPtr_ = other.ctxPtr_;
+  keyPair_ = std::move(other.keyPair_);
+
+  other.ptr_ = nullptr;
+
   return *this;
 }
 
