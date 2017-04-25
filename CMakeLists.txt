@@ -23,6 +23,36 @@ find_library(THRIFTPROTOCOL thriftprotocol PATHS)
 find_library(ZSTD zstd)
 
 #
+# Generate thrift defs for C++ and Python
+#
+
+find_program(THRIFT1 thrift1)
+set(THRIFTC2
+    python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
+set(THRIFTC
+    ${THRIFT1} -I ${CMAKE_SOURCE_DIR} -gen py:)
+
+set(THRIFT_DIR
+    ${CMAKE_BINARY_DIR}/fbzmq/service/if)
+file(MAKE_DIRECTORY ${THRIFT_DIR})
+
+add_custom_command(
+  OUTPUT
+    ${THRIFT_DIR}/gen-cpp2/Monitor_constants.cpp
+    ${THRIFT_DIR}/gen-cpp2/Monitor_constants.h
+    ${THRIFT_DIR}/gen-cpp2/Monitor_data.cpp
+    ${THRIFT_DIR}/gen-cpp2/Monitor_data.h
+    ${THRIFT_DIR}/gen-cpp2/Monitor_types.cpp
+    ${THRIFT_DIR}/gen-cpp2/Monitor_types.h
+    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/constants.py
+    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/__init__.py
+    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/ttypes.py
+  COMMAND
+    ${THRIFTC2}json,optionals -o ${THRIFT_DIR} ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
+    ${THRIFTC} -o ${THRIFT_DIR} ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
+)
+
+#
 # `fbzmq` library
 #
 
@@ -40,9 +70,9 @@ add_library(fbzmq STATIC
   zmq/Message.cpp
   zmq/Socket.cpp
   zmq/SocketMonitor.cpp
-  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.cpp
-  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.cpp
-  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.cpp
+  ${THRIFT_DIR}/gen-cpp2/Monitor_constants.cpp
+  ${THRIFT_DIR}/gen-cpp2/Monitor_data.cpp
+  ${THRIFT_DIR}/gen-cpp2/Monitor_types.cpp
 )
 
 target_link_libraries(fbzmq
@@ -102,7 +132,9 @@ install(FILES
 )
 
 install(FILES
-  ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.h
+  ${THRIFT_DIR}/gen-cpp2/Monitor_constants.h
+  ${THRIFT_DIR}/gen-cpp2/Monitor_data.h
+  ${THRIFT_DIR}/gen-cpp2/Monitor_types.h
   DESTINATION include/fbzmq/service/if/gen-cpp2
 )
 
@@ -111,21 +143,16 @@ install(FILES
   DESTINATION include/fbzmq/service/if
 )
 
-file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/service/if)
+install(FILES
+  ${THRIFT_DIR}/gen-py/fbzmq/__init__.py
+  DESTINATION /usr/lib/python2.7/site-packages/fbzmq/
+)
 
-set(THRIFTC2
-    python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
-
-add_custom_command(
-  OUTPUT
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_constants.h
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_data.h
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if/gen-cpp2/Monitor_types.h
-  COMMAND
-    ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/service/if ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
+install(FILES
+  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/constants.py
+  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/__init__.py
+  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/ttypes.py
+  DESTINATION /usr/lib/python2.7/site-packages/fbzmq/Monitor/
 )
 
 #
@@ -145,7 +172,6 @@ if (BUILD_TESTS)
   find_library(ZSTD zstd)
 
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq)
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/if)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/examples/if)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests)
 
