@@ -36,7 +36,7 @@ install_wangle() {
     git clone https://github.com/facebook/wangle
   fi
   cd wangle/wangle
-  git checkout master
+  git checkout v2017.03.20.00
   cmake .
   make
   make install
@@ -94,6 +94,7 @@ install_fbthrift() {
     git clone https://github.com/facebook/fbthrift
   fi
   cd fbthrift/thrift
+  git checkout v2017.03.20.00
   if [[ -x "./build/deps_$1.sh" ]] ; then
     "./build/deps_$1.sh"
   fi
