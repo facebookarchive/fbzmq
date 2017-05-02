@@ -179,6 +179,17 @@ if (BUILD_TESTS)
     OUTPUT
       ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.cpp
       ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.h
+    COMMAND
+      ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests ${CMAKE_SOURCE_DIR}/zmq/tests/Test.thrift \;
+  )
+
+  add_library(fbzmq-test-if
+    ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.h
+  )
+
+  add_custom_command(
+    OUTPUT
       ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.cpp
       ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.h
       ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.cpp
@@ -186,18 +197,16 @@ if (BUILD_TESTS)
       ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.cpp
       ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.h
     COMMAND
-      ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests ${CMAKE_SOURCE_DIR}/zmq/tests/Test.thrift \;
       ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/examples/if ${CMAKE_SOURCE_DIR}/examples/if/Example.thrift \;
-  )
-
-  add_library(fbzmq-test-if
-    ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.cpp
   )
 
   add_library(fbzmq-examples-if
     ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.h
     ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.h
     ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.cpp
+    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.h
   )
 
   target_link_libraries(fbzmq-test-if
