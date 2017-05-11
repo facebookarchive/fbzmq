@@ -342,6 +342,48 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   EXPECT_FALSE(evl.isRunning());
 }
 
+TEST(ZmqEventLoopTest, sendRecvMultipart) {
+  Context context;
+  ZmqEventLoop evl;
+  const SocketUrl socketUrl{"inproc://server_url"};
+
+  Socket<ZMQ_REP, ZMQ_SERVER> serverSock{context};
+  serverSock.bind(socketUrl).value();
+  evl.addSocket(RawZmqSocketPtr{*serverSock}, ZMQ_POLLIN, [&](int) noexcept {
+    LOG(INFO) << "Received request on server socket.";
+    Message msg1, msg2;
+    serverSock.recvMultiple(msg1, msg2).value();
+    LOG(INFO) << "Messages received .... "
+              << "\n\t " << msg1.read<std::string>().value()
+              << "\n\t " << msg2.read<std::string>().value();
+    EXPECT_EQ(std::string("hello world"), msg1.read<std::string>().value());
+    EXPECT_EQ(std::string("yolo"), msg2.read<std::string>().value());
+    serverSock.sendMultiple(msg1, msg2).value();
+    evl.stop();
+  });
+
+  std::thread evlThread([&]() noexcept {
+    LOG(INFO) << "Starting event loop";
+    evl.run();
+    LOG(INFO) << "Event loop stopped";
+  });
+  evl.waitUntilRunning();
+
+  Socket<ZMQ_REQ, ZMQ_CLIENT> clientSock{context};
+  clientSock.connect(socketUrl).value();
+
+  LOG(INFO) << "Sending messages.";
+  clientSock.sendMultiple(
+      Message::from(std::string("hello world")).value(),
+      Message::from(std::string("yolo")).value());
+  LOG(INFO) << "Receiving messages.";
+  auto msgs = clientSock.recvMultiple().value();
+  LOG(INFO) << "Received messages.";
+  EXPECT_EQ(2, msgs.size());
+
+  evlThread.join();
+}
+
 } // namespace fbzmq
 
 int
