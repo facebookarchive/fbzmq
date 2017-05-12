@@ -17,6 +17,8 @@ constexpr folly::StringPiece Constants::kStringCmdUrl;
 
 constexpr folly::StringPiece Constants::kThriftCmdUrl;
 
+constexpr folly::StringPiece Constants::kMultipleCmdUrl;
+
 constexpr folly::StringPiece Constants::kPubUrl;
 
 constexpr std::chrono::milliseconds Constants::kReadTimeout;

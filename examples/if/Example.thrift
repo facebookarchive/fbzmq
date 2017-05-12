@@ -27,3 +27,7 @@ struct Response {
   // value not used if it's a KEY_SET command
   2: optional i64 value = 99,
 }
+
+struct StrValue {
+  1: string value;
+}

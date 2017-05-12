@@ -22,6 +22,7 @@ class ZmqClient {
     const std::string& primitiveCmdUrl,
     const std::string& stringCmdUrl,
     const std::string& thriftCmdUrl,
+    const std::string& multipleCmdUrl,
     const std::string& pubUrl);
 
   // start making requests of various types (primitive, string, thrift)
@@ -36,6 +37,9 @@ class ZmqClient {
 
   // make string type request
   void makeStringRequest() noexcept;
+
+  // make multiple request
+  void makeMultipleRequest() noexcept;
 
   // make a KEY_SET request
   // return true on success, false on failture
@@ -55,6 +59,7 @@ class ZmqClient {
   const std::string primitiveCmdUrl_;
   const std::string stringCmdUrl_;
   const std::string thriftCmdUrl_;
+  const std::string multipleCmdUrl_;
   const std::string pubUrl_;
 
   // subscriber socket

@@ -26,6 +26,7 @@ main(int argc, char** argv) {
     fbzmq::example::Constants::kPrimitiveCmdUrl.str(),
     fbzmq::example::Constants::kStringCmdUrl.str(),
     fbzmq::example::Constants::kThriftCmdUrl.str(),
+    fbzmq::example::Constants::kMultipleCmdUrl.str(),
     fbzmq::example::Constants::kPubUrl.str());
 
   client.startRequests();

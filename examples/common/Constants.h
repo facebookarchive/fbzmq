@@ -29,9 +29,13 @@ class Constants {
   static constexpr folly::StringPiece kThriftCmdUrl =
     "tcp://127.0.0.1:55557";
 
+  // the zmq url for request/reply multiple message
+  static constexpr folly::StringPiece kMultipleCmdUrl =
+    "tcp://127.0.0.1:55558";
+
   // the zmq url for subscribe/publish primitive message
   static constexpr folly::StringPiece kPubUrl =
-    "tcp://127.0.0.1:55558";
+    "tcp://127.0.0.1:55559";
 
   // the default I/O read timeout in milliseconds
   static constexpr std::chrono::milliseconds kReadTimeout{500};
