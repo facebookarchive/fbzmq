@@ -47,7 +47,9 @@ LogSample::LogSample(std::chrono::system_clock::time_point timestamp)
 
 std::string
 LogSample::toJson() const {
-  return folly::toJson(json_);
+  folly::json::serialization_opts opts;
+  opts.sort_keys = true;
+  return folly::json::serialize(json_, opts);
 }
 
 void

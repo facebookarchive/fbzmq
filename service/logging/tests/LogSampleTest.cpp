@@ -7,8 +7,6 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include <unistd.h>
-
 #include <chrono>
 
 #include <folly/json.h>
@@ -84,7 +82,11 @@ TEST(LogSampleTest, ApiTest) {
      }
     }
   )config";
-  EXPECT_EQ(folly::toJson(folly::parseJson(jsonSample)), sample.toJson());
+
+  folly::json::serialization_opts opts;
+  opts.sort_keys = true;
+  auto expectedJson = folly::parseJson(jsonSample);
+  EXPECT_EQ(folly::json::serialize(expectedJson, opts), sample.toJson());
 }
 
 } // namespace fbzmq
