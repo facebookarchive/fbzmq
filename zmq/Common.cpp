@@ -20,7 +20,8 @@ Error::Error(int errNum)
 Error::Error(int errNum, std::string errString)
     : errNum(errNum), errString(errString) {}
 
-std::ostream& operator<<(std::ostream& out, Error const& err) {
+std::ostream&
+operator<<(std::ostream& out, Error const& err) {
   out << "Error code: " << err.errNum << ", '" << err.errString << "'";
   return out;
 }

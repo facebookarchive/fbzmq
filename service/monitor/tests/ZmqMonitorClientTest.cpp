@@ -21,7 +21,9 @@ using namespace fbzmq;
 using apache::thrift::CompactSerializer;
 
 TEST(ZmqMonitorClientTest, BasicOperation) {
-  SCOPE_EXIT { LOG(INFO) << "ZmqMonitorClient test/basic operations is done"; };
+  SCOPE_EXIT {
+    LOG(INFO) << "ZmqMonitorClient test/basic operations is done";
+  };
 
   LOG(INFO) << "ZmqMonitorClient test/basic operations starts...";
   Context context;
@@ -48,9 +50,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   LOG(INFO) << "ZmqMonitor running...";
 
   // Test with a ZmqMonitor client
-  auto zmqMonitorClient =
-      std::make_unique<ZmqMonitorClient>(
-          context, std::string{"inproc://monitor-rep"});
+  auto zmqMonitorClient = std::make_unique<ZmqMonitorClient>(
+      context, std::string{"inproc://monitor-rep"});
   LOG(INFO) << "monitor client created...";
 
   thrift::Counter counterBar;
@@ -95,8 +96,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
     // Test with the SUB socket.
     // NOTE: `sub.recv` is blocking call
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::COUNTER_PUB, publication.pubType);
       auto& updateCounters = publication.counterPub.counters;
       EXPECT_EQ(1, updateCounters.size());
@@ -104,8 +105,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
     }
 
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::COUNTER_PUB, publication.pubType);
       auto& updateCounters = publication.counterPub.counters;
       EXPECT_EQ(1, updateCounters.size());
@@ -113,8 +114,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
     }
 
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::COUNTER_PUB, publication.pubType);
       auto& updateCounters = publication.counterPub.counters;
       EXPECT_EQ(1, updateCounters.size());
@@ -122,8 +123,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
     }
 
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, publication.pubType);
       EXPECT_EQ("log_category", publication.eventLogPub.category);
       vector<string> expectedSamples = {"log1", "log2"};

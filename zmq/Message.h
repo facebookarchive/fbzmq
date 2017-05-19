@@ -42,15 +42,14 @@ class Message {
   /**
    * Allocate message, content undefined (to be written by user)
    */
-  static folly::Expected<Message, Error>
-  allocate(size_t size) noexcept;
+  static folly::Expected<Message, Error> allocate(size_t size) noexcept;
 
   /**
    * Wrap existing IOBuf. Notice that this does not copy buffer, rather adopts
    * its content. The IOBuf pointer will be released when Message destructs.
    */
-  static folly::Expected<Message, Error>
-  wrapBuffer(std::unique_ptr<folly::IOBuf> buf) noexcept;
+  static folly::Expected<Message, Error> wrapBuffer(
+      std::unique_ptr<folly::IOBuf> buf) noexcept;
 
   /**
    * construct message from Thrift object using supplied serializer

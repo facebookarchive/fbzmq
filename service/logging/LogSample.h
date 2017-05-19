@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 
-#include <folly/dynamic.h>
 #include <folly/Range.h>
+#include <folly/dynamic.h>
 
 namespace fbzmq {
 
@@ -44,7 +44,6 @@ namespace fbzmq {
  */
 class LogSample {
  public:
-
   /**
    * Construct a new LogSample with current system timestamp.
    */
@@ -64,7 +63,8 @@ class LogSample {
   /**
    * Get the timestamp associated with this sample.
    */
-  std::chrono::system_clock::time_point getTimestamp() const {
+  std::chrono::system_clock::time_point
+  getTimestamp() const {
     return timestamp_;
   }
 
@@ -75,11 +75,9 @@ class LogSample {
   void addDouble(folly::StringPiece key, double value);
   void addString(folly::StringPiece key, folly::StringPiece value);
   void addStringVector(
-      folly::StringPiece key,
-      const std::vector<std::string>& values);
+      folly::StringPiece key, const std::vector<std::string>& values);
   void addStringTagset(
-      folly::StringPiece key,
-      const std::set<std::string>& tags);
+      folly::StringPiece key, const std::set<std::string>& tags);
 
   /**
    * APIs to get different types of values. Throws exception if value doesn't
@@ -101,13 +99,10 @@ class LogSample {
   bool isStringTagsetSet(folly::StringPiece key) const;
 
  private:
-
   bool isInnerValueSet(
-      folly::StringPiece keyType,
-      folly::StringPiece key) const;
+      folly::StringPiece keyType, folly::StringPiece key) const;
   const folly::dynamic& getInnerValue(
-      folly::StringPiece keyType,
-      folly::StringPiece key) const;
+      folly::StringPiece keyType, folly::StringPiece key) const;
 
   // Internal json representation of this sample
   folly::dynamic json_ = folly::dynamic::object;

@@ -21,7 +21,7 @@
 namespace fbzmq {
 
 ZmqEventLoop::ZmqEventLoop(uint64_t queueCapacity)
-  : callbackQueue_(queueCapacity) {
+    : callbackQueue_(queueCapacity) {
   // Create signal-fd for start/stop events
   if ((signalFd_ = eventfd(0 /* init-value */, 0 /* flags */)) < 0) {
     LOG(FATAL) << "ZmqEventLoop: Failed to create an eventfd.";
@@ -78,7 +78,9 @@ ZmqEventLoop::run() {
 
   // Store the current threadId. All API calls must happen within thread
   threadId_.store(pthread_self(), std::memory_order_relaxed);
-  SCOPE_EXIT { threadId_.store({}, std::memory_order_relaxed); };
+  SCOPE_EXIT {
+    threadId_.store({}, std::memory_order_relaxed);
+  };
 
   // Start the magic
   loopForever();

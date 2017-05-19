@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include <string>
-#include <chrono>
 #include <folly/Range.h>
+#include <chrono>
+#include <string>
 
 namespace fbzmq {
 namespace example {
@@ -19,23 +19,19 @@ class Constants {
  public:
   // the zmq url for request/reply primitive message
   static constexpr folly::StringPiece kPrimitiveCmdUrl =
-    "tcp://127.0.0.1:55555";
+      "tcp://127.0.0.1:55555";
 
   // the zmq url for request/reply string message
-  static constexpr folly::StringPiece kStringCmdUrl =
-    "tcp://127.0.0.1:55556";
+  static constexpr folly::StringPiece kStringCmdUrl = "tcp://127.0.0.1:55556";
 
   // the zmq url for request/reply thrift message
-  static constexpr folly::StringPiece kThriftCmdUrl =
-    "tcp://127.0.0.1:55557";
+  static constexpr folly::StringPiece kThriftCmdUrl = "tcp://127.0.0.1:55557";
 
   // the zmq url for request/reply multiple message
-  static constexpr folly::StringPiece kMultipleCmdUrl =
-    "tcp://127.0.0.1:55558";
+  static constexpr folly::StringPiece kMultipleCmdUrl = "tcp://127.0.0.1:55558";
 
   // the zmq url for subscribe/publish primitive message
-  static constexpr folly::StringPiece kPubUrl =
-    "tcp://127.0.0.1:55559";
+  static constexpr folly::StringPiece kPubUrl = "tcp://127.0.0.1:55559";
 
   // the default I/O read timeout in milliseconds
   static constexpr std::chrono::milliseconds kReadTimeout{500};

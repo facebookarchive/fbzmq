@@ -19,12 +19,12 @@ namespace example {
 class ZmqServer final : public fbzmq::ZmqEventLoop {
  public:
   ZmqServer(
-    fbzmq::Context& zmqContext,
-    const std::string& primitiveCmdUrl,
-    const std::string& stringCmdUrl,
-    const std::string& thriftCmdUrl,
-    const std::string& multipleCmdUrl,
-    const std::string& pubUrl);
+      fbzmq::Context& zmqContext,
+      const std::string& primitiveCmdUrl,
+      const std::string& stringCmdUrl,
+      const std::string& thriftCmdUrl,
+      const std::string& multipleCmdUrl,
+      const std::string& pubUrl);
 
   // disable copying
   ZmqServer(const ZmqServer&) = delete;

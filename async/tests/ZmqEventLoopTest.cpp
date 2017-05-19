@@ -7,7 +7,6 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include <cstdlib>
 #include <folly/Memory.h>
 #include <folly/ThreadName.h>
 #include <gtest/gtest.h>
@@ -54,44 +53,38 @@ class ZmqEventLoopTest final : public ZmqEventLoop {
     // we expect it to throw if we try to add a callback to the same socket
     // twice
     EXPECT_NO_THROW(
-      addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {})
-    );
+        addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {}));
     EXPECT_THROW(
-      addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {}),
-      std::runtime_error
-    );
+        addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {}),
+        std::runtime_error);
     removeSocket(RawZmqSocketPtr{*repSock_});
     // Finally, Attach the callback we aactually want
-    EXPECT_NO_THROW(addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN,
-        [this](int revents) noexcept {
-      // revents must be equal to ZMQ_POLLIN
-      EXPECT_EQ(ZMQ_POLLIN, revents);
+    EXPECT_NO_THROW(addSocket(
+        RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [this](int revents) noexcept {
+          // revents must be equal to ZMQ_POLLIN
+          EXPECT_EQ(ZMQ_POLLIN, revents);
 
-      // receive request
-      auto ret = repSock_.recvOne().value().read<string>().value();
-      EXPECT_EQ(kRequestStr, ret);
-      LOG(INFO) << "Received request: " << ret;
+          // receive request
+          auto ret = repSock_.recvOne().value().read<string>().value();
+          EXPECT_EQ(kRequestStr, ret);
+          LOG(INFO) << "Received request: " << ret;
 
-      // send response back
-      EXPECT_NO_THROW(
-        repSock_.sendOne(Message::from(kResponseStr).value()).value());
-    }));
+          // send response back
+          EXPECT_NO_THROW(
+              repSock_.sendOne(Message::from(kResponseStr).value()).value());
+        }));
 
     // we expect it to throw if we try to add another callback
     // to the same socket
     EXPECT_THROW(
-      addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {}),
-      std::runtime_error
-    );
+        addSocket(RawZmqSocketPtr{*repSock_}, ZMQ_POLLIN, [](int) noexcept {}),
+        std::runtime_error);
 
     // test adding socketFd twice
     EXPECT_NO_THROW(addSocketFd(-1, ZMQ_POLLIN, [](int) noexcept {}));
     EXPECT_THROW(
-      addSocketFd(-1, ZMQ_POLLIN, [](int) noexcept {}),
-      std::runtime_error
-    );
+        addSocketFd(-1, ZMQ_POLLIN, [](int) noexcept {}), std::runtime_error);
     removeSocketFd(-1);
-
 
     // Schedule another async-timeout
     auto token =
@@ -107,7 +100,7 @@ class ZmqEventLoopTest final : public ZmqEventLoop {
     // should get executed before the first one
     auto now = std::chrono::steady_clock::now();
     scheduleTimeout(
-        std::chrono::milliseconds(105), [ this, now, token ]() noexcept {
+        std::chrono::milliseconds(105), [this, now, token]() noexcept {
           count_ += 1;
           auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::steady_clock::now() - now);
@@ -122,17 +115,16 @@ class ZmqEventLoopTest final : public ZmqEventLoop {
     EXPECT_EQ(2, getNumPendingTimeouts());
     // schedule final timeout after the one we were supposed to cancel
     // to make sure it didn't execute
-    scheduleTimeout(
-        std::chrono::milliseconds(115), [ this, now ]() noexcept {
-          count_ += 1;
-          auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
-              std::chrono::steady_clock::now() - now);
-          EXPECT_LE(std::chrono::milliseconds(115), diff);
-          LOG(INFO) << "Executed last timeout after " << diff.count() << "ms.";
-          EXPECT_EQ(0, getNumPendingTimeouts());
+    scheduleTimeout(std::chrono::milliseconds(115), [this, now]() noexcept {
+      count_ += 1;
+      auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - now);
+      EXPECT_LE(std::chrono::milliseconds(115), diff);
+      LOG(INFO) << "Executed last timeout after " << diff.count() << "ms.";
+      EXPECT_EQ(0, getNumPendingTimeouts());
 
-          timerExecuted_.store(true, std::memory_order_relaxed);
-        });
+      timerExecuted_.store(true, std::memory_order_relaxed);
+    });
     EXPECT_EQ(3, getNumPendingTimeouts());
   }
 
@@ -199,7 +191,7 @@ TEST(ZmqEventLoopTest, BasicCommunication) {
 TEST(ZmqEventLoopTest, CopyCapture) {
   ZmqEventLoop evl;
 
-  auto callback = std::function<void() noexcept>([&] () noexcept {
+  auto callback = std::function<void() noexcept>([&]() noexcept {
     EXPECT_TRUE(true);
     evl.stop();
   });
@@ -215,9 +207,7 @@ TEST(ZmqEventLoopTest, RunInEventLoopApi) {
   ZmqEventLoop evl(10);
 
   // Start and wait until evl loop is running
-  std::thread evlThread([&] () {
-    evl.run();
-  });
+  std::thread evlThread([&]() { evl.run(); });
   evl.waitUntilRunning();
 
   // Make sure loop is running and we are not in the same thread as of evl
@@ -229,7 +219,7 @@ TEST(ZmqEventLoopTest, RunInEventLoopApi) {
   int count = 0;
   for (int i = 0; i < 100; i++) {
     evl.runInEventLoop([&, i]() noexcept {
-      EXPECT_EQ(i, count);    // Must be same by when callback is executed.
+      EXPECT_EQ(i, count); // Must be same by when callback is executed.
       ++count;
       VLOG(1) << "count: " << count;
       EXPECT_TRUE(evl.isRunning());
@@ -256,18 +246,15 @@ TEST(ZmqEventLoopTest, RunImmediatelyOrInEventLoopApi) {
   ZmqEventLoop evl(10);
 
   int counter = 0;
-  auto incrementCb = std::function<void() noexcept>([&] () noexcept {
-    counter++;
-  });
+  auto incrementCb =
+      std::function<void() noexcept>([&]() noexcept { counter++; });
 
   // Case-1: Thread is not running
   evl.runImmediatelyOrInEventLoop(incrementCb);
   EXPECT_EQ(1, counter);
 
   // Start event loop thread
-  std::thread evlThread([&]() {
-    evl.run();
-  });
+  std::thread evlThread([&]() { evl.run(); });
   evl.waitUntilRunning();
 
   // Case-2: Schedule a callback when thread is running
@@ -354,8 +341,8 @@ TEST(ZmqEventLoopTest, sendRecvMultipart) {
     Message msg1, msg2;
     serverSock.recvMultiple(msg1, msg2).value();
     LOG(INFO) << "Messages received .... "
-              << "\n\t " << msg1.read<std::string>().value()
-              << "\n\t " << msg2.read<std::string>().value();
+              << "\n\t " << msg1.read<std::string>().value() << "\n\t "
+              << msg2.read<std::string>().value();
     EXPECT_EQ(std::string("hello world"), msg1.read<std::string>().value());
     EXPECT_EQ(std::string("yolo"), msg2.read<std::string>().value());
     serverSock.sendMultiple(msg1, msg2).value();

@@ -35,7 +35,8 @@ ZmqServer::ZmqServer(
   prepare();
 }
 
-void ZmqServer::prepare() noexcept {
+void
+ZmqServer::prepare() noexcept {
   LOG(INFO) << "Server: Binding primitiveCmdUrl_ '" << primitiveCmdUrl_ << "'";
   primitiveCmdSock_.bind(fbzmq::SocketUrl{primitiveCmdUrl_}).value();
 
@@ -85,7 +86,8 @@ void ZmqServer::prepare() noexcept {
       });
 }
 
-void ZmqServer::processPrimitiveCommand() noexcept {
+void
+ZmqServer::processPrimitiveCommand() noexcept {
   // recv request
   auto maybeMsg = primitiveCmdSock_.recvOne();
   if (maybeMsg.hasError()) {
@@ -115,7 +117,8 @@ void ZmqServer::processPrimitiveCommand() noexcept {
   }
 }
 
-void ZmqServer::processStringCommand() noexcept {
+void
+ZmqServer::processStringCommand() noexcept {
   // recv request
   auto maybeMsg = stringCmdSock_.recvOne();
   if (maybeMsg.hasError()) {
@@ -144,7 +147,8 @@ void ZmqServer::processStringCommand() noexcept {
   }
 }
 
-void ZmqServer::processMultipleCommand() noexcept {
+void
+ZmqServer::processMultipleCommand() noexcept {
   fbzmq::Message msg1, msg2, msg3;
 
   // recv request
@@ -183,7 +187,8 @@ void ZmqServer::processMultipleCommand() noexcept {
   }
 }
 
-void ZmqServer::processThriftCommand() noexcept {
+void
+ZmqServer::processThriftCommand() noexcept {
   // read out thrift command
   auto maybeThriftObj =
       thriftCmdSock_.recvThriftObj<thrift::Request>(serializer_);
@@ -197,44 +202,44 @@ void ZmqServer::processThriftCommand() noexcept {
   const auto& value = request.value;
 
   switch (request.cmd) {
-    case thrift::Command::KEY_SET: {
-      VLOG(2) << "Received KEY_SET command (" << key << ": " << *value << ")";
-      kvStore_[key] = *value;
+  case thrift::Command::KEY_SET: {
+    VLOG(2) << "Received KEY_SET command (" << key << ": " << *value << ")";
+    kvStore_[key] = *value;
 
-      thrift::Response response;
+    thrift::Response response;
+    response.success = true;
+    auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
+    if (rc.hasError()) {
+      LOG(ERROR) << "Sent response failed: " << rc.error();
+      return;
+    }
+    break;
+  }
+
+  case thrift::Command::KEY_GET: {
+    VLOG(2) << "Received KEY_GET command (" << key << ")";
+    auto it = kvStore_.find(key);
+
+    thrift::Response response;
+    if (it == kvStore_.end()) {
+      response.success = false;
+    } else {
       response.success = true;
-      auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
-      if (rc.hasError()) {
-        LOG(ERROR) << "Sent response failed: " << rc.error();
-        return;
-      }
-      break;
+      response.value = it->second;
     }
 
-    case thrift::Command::KEY_GET: {
-      VLOG(2) << "Received KEY_GET command (" << key << ")";
-      auto it = kvStore_.find(key);
-
-      thrift::Response response;
-      if (it == kvStore_.end()) {
-        response.success = false;
-      } else {
-        response.success = true;
-        response.value = it->second;
-      }
-
-      auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
-      if (rc.hasError()) {
-        LOG(ERROR) << "Sent response failed: " << rc.error();
-        return;
-      }
-      break;
+    auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
+    if (rc.hasError()) {
+      LOG(ERROR) << "Sent response failed: " << rc.error();
+      return;
     }
+    break;
+  }
 
-    default: {
-      LOG(ERROR) << "Unknown thrift command: " << static_cast<int>(request.cmd);
-      break;
-    }
+  default: {
+    LOG(ERROR) << "Unknown thrift command: " << static_cast<int>(request.cmd);
+    break;
+  }
   }
 
   for (const auto& keyVal : kvStore_) {

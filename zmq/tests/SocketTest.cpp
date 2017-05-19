@@ -87,9 +87,9 @@ TEST(Socket, SetKeepAlive) {
 
 TEST(Socket, RecvNonBlocking) {
   fbzmq::Context ctx;
-  //make a non blocking socket
+  // make a non blocking socket
   fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(
-    ctx, folly::none, folly::none, NonblockingFlag{true});
+      ctx, folly::none, folly::none, NonblockingFlag{true});
 
   // Move into another socket (use move copy)
   fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep2 = std::move(rep);
@@ -135,7 +135,6 @@ TEST(Socket, CloseThenDestruct) {
   sub.close();
   pub.close();
 }
-
 
 TEST(Socket, DefaultOptions) {
   fbzmq::Context ctx;
@@ -336,16 +335,14 @@ TEST(Socket, ThriftSerDeser) {
   wrapperVal.value = std::move(rawClientVal);
 
   auto rawWrapperVal = fbzmq::util::writeThriftObj(wrapperVal, serializer);
-  auto newWrapperVal =
-      fbzmq::util::readThriftObj<fbzmq::test::WrapperValue>(
-          *(rawWrapperVal.get()), serializer);
+  auto newWrapperVal = fbzmq::util::readThriftObj<fbzmq::test::WrapperValue>(
+      *(rawWrapperVal.get()), serializer);
 
   EXPECT_EQ(newWrapperVal.version, 1000);
 
   auto newRawClientVal = std::move(newWrapperVal.value);
-  auto newClientVal =
-      fbzmq::util::readThriftObj<fbzmq::test::TestValue>(
-          *(newRawClientVal.get()), serializer);
+  auto newClientVal = fbzmq::util::readThriftObj<fbzmq::test::TestValue>(
+      *(newRawClientVal.get()), serializer);
 
   EXPECT_EQ(newClientVal.value, "test1234");
 }
@@ -356,12 +353,11 @@ TEST(Socket, ThriftSerDeser) {
 TEST(Socket, ThriftSerDeserStr) {
   CompactSerializer serializer;
   const fbzmq::test::TestValue clientVal(
-      apache::thrift::FRAGILE,
-      "hello world");
+      apache::thrift::FRAGILE, "hello world");
 
   auto str = fbzmq::util::writeThriftObjStr(clientVal, serializer);
-  auto obj = fbzmq::util::readThriftObjStr<fbzmq::test::TestValue>(
-      str, serializer);
+  auto obj =
+      fbzmq::util::readThriftObjStr<fbzmq::test::TestValue>(str, serializer);
 
   EXPECT_EQ(clientVal, obj);
 }
@@ -417,8 +413,7 @@ TEST(Socket, SendRecvThriftObj) {
       {reinterpret_cast<void*>(*rep), 0, ZMQ_POLLIN, 0}};
   fbzmq::poll(pollItems).then([&serializer, &rep, &str](int) {
     rep.recvOne().then([&serializer, &str](fbzmq::Message&& rcvd) {
-      auto rcvdValue =
-          rcvd.readThriftObj<fbzmq::test::TestValue>(serializer);
+      auto rcvdValue = rcvd.readThriftObj<fbzmq::test::TestValue>(serializer);
       EXPECT_EQ(str, rcvdValue.value().value);
     });
   });
@@ -819,13 +814,17 @@ TEST(Socket, MultipleRouters) {
   client.connect(fbzmq::SocketUrl{"inproc://server1"}).value();
   client.connect(fbzmq::SocketUrl{"inproc://server2"}).value();
 
-  client.sendMultiple(
-      fbzmq::Message::from(std::string("server1")).value(),
-      fbzmq::Message::from(std::string("test1")).value()).value();
+  client
+      .sendMultiple(
+          fbzmq::Message::from(std::string("server1")).value(),
+          fbzmq::Message::from(std::string("test1")).value())
+      .value();
 
-  client.sendMultiple(
-      fbzmq::Message::from(std::string("server2")).value(),
-      fbzmq::Message::from(std::string("test2")).value()).value();
+  client
+      .sendMultiple(
+          fbzmq::Message::from(std::string("server2")).value(),
+          fbzmq::Message::from(std::string("test2")).value())
+      .value();
 
   EXPECT_EQ(
       std::string("client"),
@@ -948,7 +947,6 @@ TEST(CryptoSocket, Dealer2Dealer) {
   client.disconnect(fbzmq::SocketUrl{"inproc://server"}).value();
   client.delServerKey(fbzmq::SocketUrl{"inproc://server"});
 }
-
 
 //
 // Publisher sends encrypted messages

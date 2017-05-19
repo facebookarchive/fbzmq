@@ -17,7 +17,8 @@
 
 namespace fbzmq {
 
-std::string getSocketUrl(const std::string& urlPrefix) {
+std::string
+getSocketUrl(const std::string& urlPrefix) {
   auto tid = std::hash<std::thread::id>()(std::this_thread::get_id());
   return folly::sformat("ipc://{}_{}", urlPrefix, tid);
 }
@@ -98,26 +99,24 @@ TEST(SocketMonitor, AcceptSync) {
   std::set<fbzmq::SocketMonitorMessage> messages;
 
   // run monitor in this thread
-  std::thread t(
-      [kServerUrl, &isRunning, &isBound, &ctx, &server, &messages] {
-        // invoke this callback for monitoring messages
-        fbzmq::SocketMonitor::CallbackT f =
-            [kServerUrl, &messages, &isBound](
-                fbzmq::SocketMonitorMessage msg, fbzmq::SocketUrl url) {
-              LOG(INFO) << static_cast<int>(msg) << " : "
-                        << static_cast<std::string>(url);
-              if (msg == fbzmq::SocketMonitorMessage::ACCEPTED) {
-                EXPECT_EQ(fbzmq::SocketUrl{kServerUrl}, url);
-                isBound = true;
-              }
-              messages.insert(msg);
-            };
-        fbzmq::SocketMonitor monitor(
-            server, fbzmq::SocketUrl{"inproc://monitor"}, std::move(f));
-        isRunning = true;
-        auto ret = monitor.runForever();
-        EXPECT_TRUE(ret.hasValue());
-      });
+  std::thread t([kServerUrl, &isRunning, &isBound, &server, &messages] {
+    // invoke this callback for monitoring messages
+    fbzmq::SocketMonitor::CallbackT f = [kServerUrl, &messages, &isBound](
+        fbzmq::SocketMonitorMessage msg, fbzmq::SocketUrl url) {
+      LOG(INFO) << static_cast<int>(msg) << " : "
+                << static_cast<std::string>(url);
+      if (msg == fbzmq::SocketMonitorMessage::ACCEPTED) {
+        EXPECT_EQ(fbzmq::SocketUrl{kServerUrl}, url);
+        isBound = true;
+      }
+      messages.insert(msg);
+    };
+    fbzmq::SocketMonitor monitor(
+        server, fbzmq::SocketUrl{"inproc://monitor"}, std::move(f));
+    isRunning = true;
+    auto ret = monitor.runForever();
+    EXPECT_TRUE(ret.hasValue());
+  });
 
   // wait for the monitor thread to start
   while (not isRunning) {

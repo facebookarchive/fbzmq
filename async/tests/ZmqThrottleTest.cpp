@@ -25,7 +25,7 @@ TEST(ZmqThrottleTest, ThrottleTest) {
     LOG(INFO) << "Incremented counter. New value: " << count;
   });
 
-  evl.scheduleTimeout(chrono::milliseconds(0), [&] () noexcept {
+  evl.scheduleTimeout(chrono::milliseconds(0), [&]() noexcept {
     LOG(INFO) << "First timeout ... ";
     EXPECT_FALSE(throttledFn.isActive());
     EXPECT_EQ(0, count);
@@ -36,7 +36,7 @@ TEST(ZmqThrottleTest, ThrottleTest) {
     }
   });
 
-  evl.scheduleTimeout(chrono::milliseconds(200), [&] () noexcept {
+  evl.scheduleTimeout(chrono::milliseconds(200), [&]() noexcept {
     EXPECT_EQ(1, count);
     auto callbackFn = [&]() noexcept {
       EXPECT_EQ(1, count);
@@ -58,12 +58,11 @@ TEST(ZmqThrottleTest, ThrottleTest) {
     EXPECT_FALSE(throttledFn.isActive());
 
     // Schedule stop at the end
-    evl.scheduleTimeout(chrono::milliseconds(200), [&] () noexcept {
-      EXPECT_EQ(2, count);  // Count must be 2
+    evl.scheduleTimeout(chrono::milliseconds(200), [&]() noexcept {
+      EXPECT_EQ(2, count); // Count must be 2
       evl.stop();
     });
   });
-
 
   // Loop thread
   LOG(INFO) << "Starting event loop.";

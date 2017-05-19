@@ -34,19 +34,22 @@ ZmqClient::ZmqClient(
   prepare();
 }
 
-void ZmqClient::startRequests() noexcept {
+void
+ZmqClient::startRequests() noexcept {
   makePrimitiveRequest();
   makeStringRequest();
   makeThriftRequest();
   makeMultipleRequest();
 }
 
-void ZmqClient::prepare() noexcept {
+void
+ZmqClient::prepare() noexcept {
   LOG(INFO) << "Client connecting pubUrl_ '" << pubUrl_ << "'";
   subSock_.connect(fbzmq::SocketUrl{pubUrl_}).value();
 }
 
-void ZmqClient::makePrimitiveRequest() noexcept {
+void
+ZmqClient::makePrimitiveRequest() noexcept {
   uint32_t request = folly::Random::rand32() % 100;
   auto const msg = fbzmq::Message::from(request).value();
 
@@ -76,7 +79,8 @@ void ZmqClient::makePrimitiveRequest() noexcept {
   LOG(INFO) << "<primitive message> received reply: " << reply;
 }
 
-void ZmqClient::makeStringRequest() noexcept {
+void
+ZmqClient::makeStringRequest() noexcept {
   std::string request = "hello";
   auto const msg = fbzmq::Message::from(request).value();
 
@@ -106,7 +110,8 @@ void ZmqClient::makeStringRequest() noexcept {
   LOG(INFO) << "<string message> received reply: " << reply;
 }
 
-void ZmqClient::makeMultipleRequest() noexcept {
+void
+ZmqClient::makeMultipleRequest() noexcept {
   uint32_t request1 = 42;
   auto const msg1 = fbzmq::Message::from(request1).value();
 
@@ -122,8 +127,8 @@ void ZmqClient::makeMultipleRequest() noexcept {
   fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> reqSock{zmqContext_};
   reqSock.connect(fbzmq::SocketUrl{multipleCmdUrl_}).value();
 
-  LOG(INFO) << "<multi string message> sending request : "
-            << request1 << ", " << request2 << ", " << request3.value;
+  LOG(INFO) << "<multi string message> sending request : " << request1 << ", "
+            << request2 << ", " << request3.value;
   auto rc = reqSock.sendMultiple(msg1, msg2, msg3);
   if (rc.hasError()) {
     LOG(ERROR) << "sending request failed: " << rc.error();
@@ -146,7 +151,8 @@ void ZmqClient::makeMultipleRequest() noexcept {
   LOG(INFO) << "<multi string message> received reply: " << reply;
 }
 
-bool ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
+bool
+ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   thrift::Request request;
   request.cmd = thrift::Command::KEY_SET;
   request.key = key;
@@ -178,7 +184,8 @@ bool ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   return true;
 }
 
-bool ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
+bool
+ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
   thrift::Request request;
   request.cmd = thrift::Command::KEY_GET;
   request.key = key;
@@ -209,7 +216,8 @@ bool ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
   return true;
 }
 
-void ZmqClient::makeThriftRequest() noexcept {
+void
+ZmqClient::makeThriftRequest() noexcept {
   std::string key = "test";
 
   for (int i = 0; i < 3; ++i) {

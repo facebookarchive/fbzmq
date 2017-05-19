@@ -18,12 +18,12 @@ namespace example {
 class ZmqClient {
  public:
   ZmqClient(
-    fbzmq::Context& zmqContext,
-    const std::string& primitiveCmdUrl,
-    const std::string& stringCmdUrl,
-    const std::string& thriftCmdUrl,
-    const std::string& multipleCmdUrl,
-    const std::string& pubUrl);
+      fbzmq::Context& zmqContext,
+      const std::string& primitiveCmdUrl,
+      const std::string& stringCmdUrl,
+      const std::string& thriftCmdUrl,
+      const std::string& multipleCmdUrl,
+      const std::string& pubUrl);
 
   // start making requests of various types (primitive, string, thrift)
   void startRequests() noexcept;

@@ -13,7 +13,7 @@ namespace fbzmq {
 
 class Runnable {
  public:
-   virtual ~Runnable() = default;
+  virtual ~Runnable() = default;
 
   /**
    * Start thread execution. Ideally this function blocks and returns only when
@@ -41,7 +41,6 @@ class Runnable {
    * signal and want to wait before proceeding.
    */
   virtual void waitUntilStopped() const = 0;
-
 };
 
 } // namespace fbzmq

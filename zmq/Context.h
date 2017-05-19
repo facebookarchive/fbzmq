@@ -37,7 +37,7 @@ class Context {
 
   // non-copyable
   Context(Context const&) = delete;
-  Context& operator=(Context  const&) = delete;
+  Context& operator=(Context const&) = delete;
 
   // movable
   Context(Context&&) noexcept;

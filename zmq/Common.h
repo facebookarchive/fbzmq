@@ -85,7 +85,6 @@ writeThriftObjStr(ThriftType const& obj, Serializer& serializer) {
   return result;
 }
 
-
 template <typename ThriftType, typename Serializer>
 ThriftType
 readThriftObj(folly::IOBuf& buf, Serializer& serializer) {

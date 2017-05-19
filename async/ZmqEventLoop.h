@@ -140,8 +140,7 @@ class ZmqEventLoop : public Runnable {
    *
    * Callback will be invoked with the appropriate revents bitmap.
    */
-  void addSocketFd(
-      int socketFd, int events, SocketCallback callback);
+  void addSocketFd(int socketFd, int events, SocketCallback callback);
   void addSocket(
       RawZmqSocketPtr socketPtr, int events, SocketCallback callback);
 
@@ -219,7 +218,6 @@ class ZmqEventLoop : public Runnable {
   }
 
  private:
-
   /**
    * Utility struct to store information about poll-item and its callback
    * for all added sockets/fds

@@ -21,7 +21,9 @@ using namespace fbzmq;
 using apache::thrift::CompactSerializer;
 
 TEST(ZmqMonitorTest, BasicOperation) {
-  SCOPE_EXIT { LOG(INFO) << "ZmqMonitor test/basic operations is done"; };
+  SCOPE_EXIT {
+    LOG(INFO) << "ZmqMonitor test/basic operations is done";
+  };
 
   LOG(INFO) << "ZmqMonitor test/basic operations starts...";
   Context context;
@@ -101,8 +103,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
     // Test with the SUB socket.
     // `sub.recv` is blocking call
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::COUNTER_PUB, publication.pubType);
       auto& updateCounters = publication.counterPub.counters;
       EXPECT_EQ(1, updateCounters.size());
@@ -110,8 +112,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
     }
 
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::COUNTER_PUB, publication.pubType);
       auto& updateCounters = publication.counterPub.counters;
       EXPECT_EQ(3, updateCounters.size());
@@ -121,8 +123,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
     }
 
     {
-      auto publication = sub.recvThriftObj<thrift::MonitorPub>(
-          serializer).value();
+      auto publication =
+          sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, publication.pubType);
       EXPECT_EQ("log_category", publication.eventLogPub.category);
       vector<string> expectedSamples = {"log1", "log2"};

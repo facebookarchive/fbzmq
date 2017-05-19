@@ -14,7 +14,6 @@
 #include <folly/Optional.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
-
 #include "ZmqMonitor.h"
 
 namespace fbzmq {

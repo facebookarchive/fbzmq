@@ -35,7 +35,7 @@ class TestThread final : public ZmqEventLoop {
     auto start = std::chrono::steady_clock::now();
 
     // Schedule first timeout
-    timeout_ = ZmqTimeout::make(this, [&, start ]() noexcept {
+    timeout_ = ZmqTimeout::make(this, [&, start]() noexcept {
       auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - start);
       LOG(INFO) << "Executing callback after " << diff.count() << "ms.";

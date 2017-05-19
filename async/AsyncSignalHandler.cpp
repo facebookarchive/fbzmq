@@ -45,7 +45,9 @@ AsyncSignalHandler::AsyncSignalHandler(ZmqEventLoop* evl) : evl_(evl) {
   });
 }
 
-AsyncSignalHandler::~AsyncSignalHandler() { close(signalFd_); }
+AsyncSignalHandler::~AsyncSignalHandler() {
+  close(signalFd_);
+}
 
 void
 AsyncSignalHandler::registerSignalHandler(int sig) {

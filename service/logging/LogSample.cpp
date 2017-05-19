@@ -29,11 +29,10 @@ const std::string kTimeCol{"time"};
 
 namespace fbzmq {
 
-LogSample::LogSample()
-  : LogSample(std::chrono::system_clock::now()) {}
+LogSample::LogSample() : LogSample(std::chrono::system_clock::now()) {}
 
 LogSample::LogSample(std::chrono::system_clock::time_point timestamp)
-  : timestamp_(timestamp) {
+    : timestamp_(timestamp) {
   json_ = folly::dynamic::object;
 
   // Initialize most frequently used column types
@@ -42,7 +41,8 @@ LogSample::LogSample(std::chrono::system_clock::time_point timestamp)
 
   // Initialize the timestamps
   json_[INT_KEY][kTimeCol] = std::chrono::duration_cast<std::chrono::seconds>(
-      timestamp_.time_since_epoch()).count();
+                                 timestamp_.time_since_epoch())
+                                 .count();
 }
 
 std::string
@@ -73,8 +73,7 @@ LogSample::addString(folly::StringPiece key, folly::StringPiece value) {
 
 void
 LogSample::addStringVector(
-    folly::StringPiece key,
-    const std::vector<std::string>& values) {
+    folly::StringPiece key, const std::vector<std::string>& values) {
   if (json_.find(STRINGVECTOR_KEY) == json_.items().end()) {
     json_.insert(STRINGVECTOR_KEY, folly::dynamic::object());
   }
@@ -84,8 +83,7 @@ LogSample::addStringVector(
 
 void
 LogSample::addStringTagset(
-    folly::StringPiece key,
-    const std::set<std::string>& tags) {
+    folly::StringPiece key, const std::set<std::string>& tags) {
   if (json_.find(STRINGTAGSET_KEY) == json_.items().end()) {
     json_.insert(STRINGTAGSET_KEY, folly::dynamic::object());
   }
@@ -147,8 +145,7 @@ LogSample::isStringTagsetSet(folly::StringPiece key) const {
 
 bool
 LogSample::isInnerValueSet(
-    folly::StringPiece keyType,
-    folly::StringPiece key) const {
+    folly::StringPiece keyType, folly::StringPiece key) const {
   if (auto obj = json_.get_ptr(keyType)) {
     if (auto data = obj->get_ptr(key)) {
       (void)data;
@@ -161,16 +158,15 @@ LogSample::isInnerValueSet(
 
 const folly::dynamic&
 LogSample::getInnerValue(
-    folly::StringPiece keyType,
-    folly::StringPiece key) const {
+    folly::StringPiece keyType, folly::StringPiece key) const {
   if (auto obj = json_.get_ptr(keyType)) {
     if (auto data = obj->get_ptr(key)) {
       return *data;
     }
   }
 
-  throw std::invalid_argument(folly::sformat(
-        "invalid key: {} with keyType: {} ", key, keyType));
+  throw std::invalid_argument(
+      folly::sformat("invalid key: {} with keyType: {} ", key, keyType));
 }
 
 } // namespace fbzmq

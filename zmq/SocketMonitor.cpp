@@ -12,11 +12,8 @@
 namespace fbzmq {
 
 SocketMonitor::SocketMonitor(
-    detail::SocketImpl const& sock,
-    SocketUrl monitorUrl,
-    CallbackT cb) noexcept
+    detail::SocketImpl const& sock, SocketUrl monitorUrl, CallbackT cb) noexcept
     : pairSock_{const_cast<void*>(sock.ctxPtr_)}, cb_{std::move(cb)} {
-
   auto ptr = const_cast<detail::SocketImpl&>(sock).ptr_;
   int rc = zmq_socket_monitor(
       ptr, static_cast<std::string>(monitorUrl).c_str(), ZMQ_EVENT_ALL);
@@ -80,39 +77,39 @@ SocketMonitor::runOnce() noexcept {
   const auto url = SocketUrl{address};
 
   switch (event.event) {
-    case ZMQ_EVENT_CONNECTED:
-      cb_(SocketMonitorMessage::CONNECTED, url);
-      break;
-    case ZMQ_EVENT_CONNECT_DELAYED:
-      cb_(SocketMonitorMessage::CONNECT_DELAYED, url);
-      break;
-    case ZMQ_EVENT_CONNECT_RETRIED:
-      cb_(SocketMonitorMessage::CONNECT_RETRIED, url);
-      break;
-    case ZMQ_EVENT_LISTENING:
-      cb_(SocketMonitorMessage::LISTENING, url);
-      break;
-    case ZMQ_EVENT_BIND_FAILED:
-      cb_(SocketMonitorMessage::BIND_FAILED, url);
-      break;
-    case ZMQ_EVENT_ACCEPTED:
-      cb_(SocketMonitorMessage::ACCEPTED, url);
-      break;
-    case ZMQ_EVENT_ACCEPT_FAILED:
-      cb_(SocketMonitorMessage::ACCEPT_FAILED, url);
-      break;
-    case ZMQ_EVENT_CLOSED:
-      cb_(SocketMonitorMessage::CLOSED, url);
-      break;
-    case ZMQ_EVENT_CLOSE_FAILED:
-      cb_(SocketMonitorMessage::CLOSE_FAILED, url);
-      break;
-    case ZMQ_EVENT_DISCONNECTED:
-      cb_(SocketMonitorMessage::DISCONNECTED, url);
-      break;
-    default:
-      LOG(ERROR) << "Unknown event: " << event.event;
-      break;
+  case ZMQ_EVENT_CONNECTED:
+    cb_(SocketMonitorMessage::CONNECTED, url);
+    break;
+  case ZMQ_EVENT_CONNECT_DELAYED:
+    cb_(SocketMonitorMessage::CONNECT_DELAYED, url);
+    break;
+  case ZMQ_EVENT_CONNECT_RETRIED:
+    cb_(SocketMonitorMessage::CONNECT_RETRIED, url);
+    break;
+  case ZMQ_EVENT_LISTENING:
+    cb_(SocketMonitorMessage::LISTENING, url);
+    break;
+  case ZMQ_EVENT_BIND_FAILED:
+    cb_(SocketMonitorMessage::BIND_FAILED, url);
+    break;
+  case ZMQ_EVENT_ACCEPTED:
+    cb_(SocketMonitorMessage::ACCEPTED, url);
+    break;
+  case ZMQ_EVENT_ACCEPT_FAILED:
+    cb_(SocketMonitorMessage::ACCEPT_FAILED, url);
+    break;
+  case ZMQ_EVENT_CLOSED:
+    cb_(SocketMonitorMessage::CLOSED, url);
+    break;
+  case ZMQ_EVENT_CLOSE_FAILED:
+    cb_(SocketMonitorMessage::CLOSE_FAILED, url);
+    break;
+  case ZMQ_EVENT_DISCONNECTED:
+    cb_(SocketMonitorMessage::DISCONNECTED, url);
+    break;
+  default:
+    LOG(ERROR) << "Unknown event: " << event.event;
+    break;
   } // switch
 
   return true;

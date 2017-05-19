@@ -34,7 +34,6 @@ class ZmqMonitor final : public ZmqEventLoop {
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
         monitorPubSock_{zmqContext} {
-
     // Prepare router socket to talk to Broker/other processes
     const int handover = 1;
     const auto handoverRet = monitorReceiveSock_.setSockOpt(
@@ -66,8 +65,7 @@ class ZmqMonitor final : public ZmqEventLoop {
     // bind monitor router socket
     VLOG(2) << "ZmqMonitor: Binding to monitorPubUrl '" << monitorPubUrl_
             << "'";
-    const auto pubBindRet =
-        monitorPubSock_.bind(SocketUrl{monitorPubUrl_});
+    const auto pubBindRet = monitorPubSock_.bind(SocketUrl{monitorPubUrl_});
     if (pubBindRet.hasError()) {
       LOG(FATAL) << "ZmqMonitor: Error binding to '" << monitorPubUrl_ << "' "
                  << pubBindRet.error();
@@ -123,79 +121,74 @@ class ZmqMonitor final : public ZmqEventLoop {
     const auto thriftReq = maybeThriftReq.value();
 
     switch (thriftReq.cmd) {
+    case thrift::MonitorCommand::SET_COUNTER_VALUES:
+      for (auto const& kv : thriftReq.counterSetParams.counters) {
+        counters_[kv.first] = kv.second;
+      }
+      // Dump new monitor values to the publish socket.
+      thriftPub.pubType = thrift::PubType::COUNTER_PUB;
+      thriftPub.counterPub.counters = thriftReq.counterSetParams.counters;
+      monitorPubSock_.sendOne(
+          Message::fromThriftObj(thriftPub, serializer_).value());
+      break;
 
-      case thrift::MonitorCommand::SET_COUNTER_VALUES:
-        for (auto const& kv : thriftReq.counterSetParams.counters) {
-          counters_[kv.first] = kv.second;
+    case thrift::MonitorCommand::GET_COUNTER_VALUES:
+      for (auto const& counterName : thriftReq.counterGetParams.counterNames) {
+        auto it = counters_.find(counterName);
+        if (it != counters_.end()) {
+          thriftValueRep.counters[counterName] = it->second;
         }
-        // Dump new monitor values to the publish socket.
-        thriftPub.pubType = thrift::PubType::COUNTER_PUB;
-        thriftPub.counterPub.counters = thriftReq.counterSetParams.counters;
-        monitorPubSock_.sendOne(
-            Message::fromThriftObj(thriftPub, serializer_).value());
-        break;
+      }
+      monitorReceiveSock_.sendMultiple(
+          requestIdMsg,
+          Message::fromThriftObj(thriftValueRep, serializer_).value());
+      break;
 
-      case thrift::MonitorCommand::GET_COUNTER_VALUES:
-        for (auto const& counterName :
-             thriftReq.counterGetParams.counterNames) {
-          auto it = counters_.find(counterName);
-          if (it != counters_.end()) {
-            thriftValueRep.counters[counterName] = it->second;
-          }
+    case thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES:
+      thriftNameRep.counterNames = folly::gen::from(counters_) |
+          folly::gen::get<0>() | folly::gen::as<std::vector<std::string>>();
+      monitorReceiveSock_.sendMultiple(
+          requestIdMsg,
+          Message::fromThriftObj(thriftNameRep, serializer_).value());
+      break;
+
+    case thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA:
+      thriftValueRep.counters.insert(counters_.begin(), counters_.end());
+      monitorReceiveSock_.sendMultiple(
+          requestIdMsg,
+          Message::fromThriftObj(thriftValueRep, serializer_).value());
+      break;
+
+    case thrift::MonitorCommand::BUMP_COUNTER:
+      for (auto const& name : thriftReq.counterBumpParams.counterNames) {
+        if (counters_.find(name) == counters_.end()) {
+          thrift::Counter counter(
+              apache::thrift::FRAGILE,
+              0,
+              thrift::CounterValueType::COUNTER,
+              std::time(nullptr));
+          counters_.emplace(name, counter);
         }
-        monitorReceiveSock_.sendMultiple(
-            requestIdMsg,
-            Message::fromThriftObj(thriftValueRep, serializer_)
-                .value());
-        break;
+        auto& counter = counters_[name];
+        ++counter.value;
+        thriftPub.counterPub.counters.emplace(name, counter);
+      }
+      // Dump new counter values to the publish socket.
+      thriftPub.pubType = thrift::PubType::COUNTER_PUB;
+      monitorPubSock_.sendOne(
+          Message::fromThriftObj(thriftPub, serializer_).value());
+      break;
 
-      case thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES:
-        thriftNameRep.counterNames = folly::gen::from(counters_) |
-                                     folly::gen::get<0>() |
-                                     folly::gen::as<std::vector<std::string>>();
-        monitorReceiveSock_.sendMultiple(
-            requestIdMsg,
-            Message::fromThriftObj(thriftNameRep, serializer_).value());
-        break;
+    case thrift::MonitorCommand::LOG_EVENT:
+      // simply forward, do not store logs
+      thriftPub.pubType = thrift::PubType::EVENT_LOG_PUB;
+      thriftPub.eventLogPub = thriftReq.eventLog;
+      monitorPubSock_.sendOne(
+          Message::fromThriftObj(thriftPub, serializer_).value());
+      break;
 
-      case thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA:
-        thriftValueRep.counters.insert(counters_.begin(), counters_.end());
-        monitorReceiveSock_.sendMultiple(
-            requestIdMsg,
-            Message::fromThriftObj(thriftValueRep, serializer_)
-                .value());
-        break;
-
-      case thrift::MonitorCommand::BUMP_COUNTER:
-        for (auto const& name : thriftReq.counterBumpParams.counterNames) {
-          if (counters_.find(name) == counters_.end()) {
-            thrift::Counter counter(
-                apache::thrift::FRAGILE,
-                0,
-                thrift::CounterValueType::COUNTER,
-                std::time(nullptr));
-            counters_.emplace(name, counter);
-          }
-          auto& counter = counters_[name];
-          ++counter.value;
-          thriftPub.counterPub.counters.emplace(name, counter);
-        }
-        // Dump new counter values to the publish socket.
-        thriftPub.pubType = thrift::PubType::COUNTER_PUB;
-        monitorPubSock_.sendOne(
-            Message::fromThriftObj(thriftPub, serializer_).value());
-        break;
-
-      case thrift::MonitorCommand::LOG_EVENT:
-        // simply forward, do not store logs
-        thriftPub.pubType = thrift::PubType::EVENT_LOG_PUB;
-        thriftPub.eventLogPub = thriftReq.eventLog;
-        monitorPubSock_.sendOne(
-            Message::fromThriftObj(thriftPub, serializer_).value());
-        break;
-
-      default:
-        LOG(ERROR) << "Unknown monitor command received";
+    default:
+      LOG(ERROR) << "Unknown monitor command received";
     }
 
     VLOG(4) << "processMonitorRequest has finished";

@@ -48,13 +48,13 @@ class ZmqThrottle final : private ZmqTimeout {
   /**
    * Tells you if this is currently active ?
    */
-  bool isActive() const {
+  bool
+  isActive() const {
     CHECK(evl_->isInEventLoop());
     return isScheduled();
   }
 
  private:
-
   /**
    * Overrides ZmqTimeout's timeout callback
    */

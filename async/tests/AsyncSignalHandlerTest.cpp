@@ -7,8 +7,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include <chrono>
 #include <gtest/gtest.h>
+#include <chrono>
 
 #include <fbzmq/async/AsyncSignalHandler.h>
 
@@ -70,8 +70,7 @@ TEST(AsyncSignalHandlerTest, Basic) {
   signalHandler.registerSignalHandler(SIGTERM);
   // register same signal again
   EXPECT_THROW(
-      signalHandler.registerSignalHandler(SIGTERM),
-      std::runtime_error);
+      signalHandler.registerSignalHandler(SIGTERM), std::runtime_error);
   // register another signal
   signalHandler.registerSignalHandler(SIGINT);
 
@@ -125,8 +124,7 @@ TEST(AsyncSignalHandlerTest, Basic) {
   signalHandler.unregisterSignalHandler(SIGTERM);
   // unregister same signal again
   EXPECT_THROW(
-      signalHandler.unregisterSignalHandler(SIGTERM),
-      std::runtime_error);
+      signalHandler.unregisterSignalHandler(SIGTERM), std::runtime_error);
 
   // send unregistered signal
   // install a signal handler first

@@ -37,7 +37,6 @@ SocketImpl::SocketImpl(
     : ptr_(zmq_socket(ctxPtr, type)),
       ctxPtr_{ctxPtr},
       keyPair_(std::move(keyPair)) {
-
   CHECK(ctxPtr);
   CHECK(ptr_) << Error();
 
@@ -117,7 +116,6 @@ SocketImpl::setKeepAlive(
     int keepAliveIdle,
     int keepAliveCnt,
     int keepAliveIntvl) noexcept {
-
   {
     auto res = setSockOpt(ZMQ_TCP_KEEPALIVE, &keepAlive, sizeof(int));
     if (res.hasError()) {
@@ -145,8 +143,8 @@ SocketImpl::setKeepAlive(
   }
 
   {
-    auto res = setSockOpt(
-        ZMQ_TCP_KEEPALIVE_INTVL, &keepAliveIntvl, sizeof(int));
+    auto res =
+        setSockOpt(ZMQ_TCP_KEEPALIVE_INTVL, &keepAliveIntvl, sizeof(int));
     if (res.hasError()) {
       return folly::makeUnexpected(res.error());
     }
@@ -369,9 +367,9 @@ SocketImpl::applyKeyPair(const KeyPair& keyPair) noexcept {
   std::array<uint8_t, crypto_sign_ed25519_PUBLICKEYBYTES> ed25519Pk;
   std::array<uint8_t, crypto_sign_ed25519_SECRETKEYBYTES> ed25519Sk;
   ::memcpy(
-    ed25519Pk.data(), keyPair.publicKey.data(), keyPair.publicKey.length());
+      ed25519Pk.data(), keyPair.publicKey.data(), keyPair.publicKey.length());
   ::memcpy(
-    ed25519Sk.data(), keyPair.privateKey.data(), keyPair.privateKey.length());
+      ed25519Sk.data(), keyPair.privateKey.data(), keyPair.privateKey.length());
 
   // 2) convert signature ed25519 key to encryption curve25519 key
   std::array<uint8_t, crypto_scalarmult_curve25519_BYTES> curve25519Pk;
@@ -386,12 +384,12 @@ SocketImpl::applyKeyPair(const KeyPair& keyPair) noexcept {
   }
 
   // Apply secrete-key on the socket
-  setSockOpt(
-      ZMQ_CURVE_SECRETKEY, curve25519Sk.data(), curve25519Sk.size()).value();
+  setSockOpt(ZMQ_CURVE_SECRETKEY, curve25519Sk.data(), curve25519Sk.size())
+      .value();
 
   // Apply public-key on the socket
-  setSockOpt(
-      ZMQ_CURVE_PUBLICKEY, curve25519Pk.data(), curve25519Pk.size()).value();
+  setSockOpt(ZMQ_CURVE_PUBLICKEY, curve25519Pk.data(), curve25519Pk.size())
+      .value();
 
   return folly::Unit();
 }
@@ -408,13 +406,13 @@ SocketImpl::setCurveServerSocketKey(const std::string& publicKey) noexcept {
   // 2) convert signature ed25519 key to encryption curve25519 key
   std::array<uint8_t, crypto_scalarmult_curve25519_BYTES> curve25519Pk;
   if (::crypto_sign_ed25519_pk_to_curve25519(
-        curve25519Pk.data(), ed25519Pk.data()) != 0) {
+          curve25519Pk.data(), ed25519Pk.data()) != 0) {
     return;
   }
 
   // 3) set server's public key
-  setSockOpt(
-      ZMQ_CURVE_SERVERKEY, curve25519Pk.data(), curve25519Pk.size()).value();
+  setSockOpt(ZMQ_CURVE_SERVERKEY, curve25519Pk.data(), curve25519Pk.size())
+      .value();
 }
 
 } // namespace detail

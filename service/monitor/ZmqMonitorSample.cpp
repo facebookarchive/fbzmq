@@ -29,7 +29,6 @@ using apache::thrift::CompactSerializer;
 // then print reponse values
 void
 oneShot(Context& context) noexcept {
-
   Socket<ZMQ_DEALER, ZMQ_CLIENT> dealer(context);
 
   // enable ipv6 on the socket
@@ -52,8 +51,8 @@ oneShot(Context& context) noexcept {
   dealer.sendThriftObj(thriftReq, serializer).value();
 
   // receive and process response
-  auto thriftNameValuesRep = dealer.recvThriftObj<
-      thrift::CounterValuesResponse>(serializer).value();
+  auto thriftNameValuesRep =
+      dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "Current monitor Key Value Pairs";
   for (auto const& it : thriftNameValuesRep.counters) {
     LOG(INFO) << "        " << it.first << ": " << it.second.value;

@@ -33,11 +33,7 @@ BOOST_STRONG_TYPEDEF(bool, NonblockingFlag)
 /**
  * Used to specify socket mode as part of type signature
  */
-enum SocketMode {
-  ZMQ_CLIENT,
-  ZMQ_SERVER,
-  UNKNOWN
-};
+enum SocketMode { ZMQ_CLIENT, ZMQ_SERVER, UNKNOWN };
 
 /**
  * Forward declaration of socket. Defined via `SocketImpl`.
@@ -77,7 +73,6 @@ class SocketImpl {
       folly::Optional<IdentityString> identity = folly::none,
       folly::Optional<KeyPair> keyPair = folly::none,
       NonblockingFlag isNonblocking = NonblockingFlag{false});
-
 
   /**
    * context-less socket, initialized with nullptr. This socket could be
@@ -131,8 +126,8 @@ class SocketImpl {
    * socket operations mode. default timeout is indefinite
    */
   folly::Expected<Message, Error> recvOne(
-      folly::Optional<std::chrono::milliseconds> timeout =
-          folly::none) const noexcept;
+      folly::Optional<std::chrono::milliseconds> timeout = folly::none) const
+      noexcept;
 
   /**
    * Static version for receiving multipart message. Will receive as many as
@@ -254,22 +249,21 @@ class SocketImpl {
   folly::Expected<ThriftType, Error>
   recvThriftObj(
       Serializer& serializer,
-      folly::Optional<std::chrono::milliseconds> timeout = folly::none
-    ) const noexcept {
+      folly::Optional<std::chrono::milliseconds> timeout = folly::none) const
+      noexcept {
     auto maybeMessage = recvOne(timeout);
 
-    return maybeMessage.hasError() ?
-      folly::makeUnexpected(maybeMessage.error()) :
-      maybeMessage.value().readThriftObj<ThriftType>(serializer);
+    return maybeMessage.hasError()
+        ? folly::makeUnexpected(maybeMessage.error())
+        : maybeMessage.value().readThriftObj<ThriftType>(serializer);
   }
-
 
   template <typename ThriftType, typename Serializer>
   folly::Expected<size_t, Error>
   sendThriftObj(const ThriftType& obj, Serializer& serializer) const noexcept {
     auto msg = Message::fromThriftObj(obj, serializer);
-    return msg.hasError() ? folly::makeUnexpected(msg.error()) :
-      sendOne(msg.value());
+    return msg.hasError() ? folly::makeUnexpected(msg.error())
+                          : sendOne(msg.value());
   }
 
   /**
@@ -280,14 +274,16 @@ class SocketImpl {
   /**
    * Return true if socket is blocking or not
    */
-  bool isNonBlocking() const {
+  bool
+  isNonBlocking() const {
     return baseFlags_ & ZMQ_DONTWAIT;
   }
 
   /**
    * Return assocaited key pair if any
    */
-  folly::Optional<KeyPair> getKeyPair() const {
+  folly::Optional<KeyPair>
+  getKeyPair() const {
     return keyPair_;
   }
 
@@ -295,30 +291,27 @@ class SocketImpl {
    * "safer" pointer to raw object, mainly for poll. you will need
    * to explicitly cast it to void* if you need to hehehehe
    */
-  uintptr_t operator*() { return reinterpret_cast<uintptr_t>(ptr_); }
+  uintptr_t operator*() {
+    return reinterpret_cast<uintptr_t>(ptr_);
+  }
 
  protected:
   /**
    * The below methods will be made open in sub-classes
    */
 
-  folly::Expected<folly::Unit, Error>
-  bind(SocketUrl) noexcept;
+  folly::Expected<folly::Unit, Error> bind(SocketUrl) noexcept;
 
-  folly::Expected<folly::Unit, Error>
-  unbind(SocketUrl) noexcept;
+  folly::Expected<folly::Unit, Error> unbind(SocketUrl) noexcept;
 
-  folly::Expected<folly::Unit, Error>
-  connect(SocketUrl) noexcept;
+  folly::Expected<folly::Unit, Error> connect(SocketUrl) noexcept;
 
-  folly::Expected<folly::Unit, Error>
-  disconnect(SocketUrl) noexcept;
+  folly::Expected<folly::Unit, Error> disconnect(SocketUrl) noexcept;
 
-  folly::Expected<folly::Unit, Error>
-  addServerKey(SocketUrl, PublicKey) noexcept;
+  folly::Expected<folly::Unit, Error> addServerKey(
+      SocketUrl, PublicKey) noexcept;
 
-  folly::Expected<folly::Unit, Error>
-  delServerKey(SocketUrl) noexcept;
+  folly::Expected<folly::Unit, Error> delServerKey(SocketUrl) noexcept;
 
  private:
   friend class fbzmq::SocketMonitor;
@@ -340,14 +333,13 @@ class SocketImpl {
   /**
    * generate and apply certificate to the socket
    */
-  folly::Expected<folly::Unit, Error>
-  applyKeyPair(const KeyPair& keyPair) noexcept;
+  folly::Expected<folly::Unit, Error> applyKeyPair(
+      const KeyPair& keyPair) noexcept;
 
   /**
    * attach server key to the socket
    */
-  void
-  setCurveServerSocketKey(const std::string& publicKey) noexcept;
+  void setCurveServerSocketKey(const std::string& publicKey) noexcept;
 
   // used to store ZMQ_DONTWAIT
   int baseFlags_{0};
@@ -437,10 +429,7 @@ class Socket<SocketType, ZMQ_SERVER> : public detail::ServerSocketImpl {
  public:
   template <typename... Args>
   explicit Socket(Args&&... args)
-      : ServerSocketImpl(
-            SocketType,
-            true,
-            std::forward<Args>(args)...) {}
+      : ServerSocketImpl(SocketType, true, std::forward<Args>(args)...) {}
 };
 
 template <int SocketType>
@@ -448,10 +437,7 @@ class Socket<SocketType, ZMQ_CLIENT> : public detail::ClientSocketImpl {
  public:
   template <typename... Args>
   explicit Socket(Args&&... args)
-      : ClientSocketImpl(
-            SocketType,
-            false,
-            std::forward<Args>(args)...) {}
+      : ClientSocketImpl(SocketType, false, std::forward<Args>(args)...) {}
 };
 
 } // namespace fbzmq

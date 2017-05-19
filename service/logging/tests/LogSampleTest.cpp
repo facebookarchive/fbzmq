@@ -18,8 +18,8 @@
 namespace fbzmq {
 
 TEST(LogSampleTest, ApiTest) {
-  const auto timestamp = std::chrono::system_clock::time_point(
-      std::chrono::seconds(111));
+  const auto timestamp =
+      std::chrono::system_clock::time_point(std::chrono::seconds(111));
   LogSample sample(timestamp);
 
   const std::vector<std::string> values = {{"val1", "val2", "val3"}};
@@ -31,14 +31,14 @@ TEST(LogSampleTest, ApiTest) {
   sample.addStringVector("vector-key", values);
   sample.addStringTagset("tagset-key", tags);
 
-  EXPECT_TRUE(sample.isIntSet("time"));         // NOTE: Special time key
+  EXPECT_TRUE(sample.isIntSet("time")); // NOTE: Special time key
   EXPECT_TRUE(sample.isIntSet("int-key"));
   EXPECT_TRUE(sample.isDoubleSet("double-key"));
   EXPECT_TRUE(sample.isStringSet("string-key"));
   EXPECT_TRUE(sample.isStringVectorSet("vector-key"));
   EXPECT_TRUE(sample.isStringTagsetSet("tagset-key"));
 
-  EXPECT_EQ(111, sample.getInt("time"));  // NOTE: Special time key
+  EXPECT_EQ(111, sample.getInt("time")); // NOTE: Special time key
   EXPECT_EQ(123, sample.getInt("int-key"));
   EXPECT_EQ(123.456, sample.getDouble("double-key"));
   EXPECT_EQ("hello world", sample.getString("string-key"));
@@ -91,7 +91,8 @@ TEST(LogSampleTest, ApiTest) {
 
 } // namespace fbzmq
 
-int main(int argc, char** argv) {
+int
+main(int argc, char** argv) {
   // Basic initialization
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

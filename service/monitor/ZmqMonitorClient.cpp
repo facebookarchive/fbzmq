@@ -16,11 +16,8 @@ ZmqMonitorClient::ZmqMonitorClient(
     const std::string& monitorSubmitUrl,
     std::string const& socketId)
     : monitorCmdUrl_(std::move(monitorSubmitUrl)),
-      monitorCmdSock_{zmqContext,
-                      folly::none,
-                      folly::none,
-                      NonblockingFlag{false}} {
-
+      monitorCmdSock_{
+          zmqContext, folly::none, folly::none, NonblockingFlag{false}} {
   if (!socketId.empty()) {
     const auto idRet = monitorCmdSock_.setSockOpt(
         ZMQ_IDENTITY, socketId.c_str(), socketId.length());

@@ -22,12 +22,12 @@ main(int argc, char** argv) {
 
   // start ZmqClient
   fbzmq::example::ZmqClient client(
-    ctx,
-    fbzmq::example::Constants::kPrimitiveCmdUrl.str(),
-    fbzmq::example::Constants::kStringCmdUrl.str(),
-    fbzmq::example::Constants::kThriftCmdUrl.str(),
-    fbzmq::example::Constants::kMultipleCmdUrl.str(),
-    fbzmq::example::Constants::kPubUrl.str());
+      ctx,
+      fbzmq::example::Constants::kPrimitiveCmdUrl.str(),
+      fbzmq::example::Constants::kStringCmdUrl.str(),
+      fbzmq::example::Constants::kThriftCmdUrl.str(),
+      fbzmq::example::Constants::kMultipleCmdUrl.str(),
+      fbzmq::example::Constants::kPubUrl.str());
 
   client.startRequests();
 
