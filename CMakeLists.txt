@@ -146,14 +146,14 @@ install(FILES
 
 install(FILES
   ${THRIFT_DIR}/gen-py/fbzmq/__init__.py
-  DESTINATION /usr/lib/python2.7/site-packages/fbzmq/
+  DESTINATION lib/python2.7/site-packages/fbzmq/
 )
 
 install(FILES
   ${THRIFT_DIR}/gen-py/fbzmq/Monitor/constants.py
   ${THRIFT_DIR}/gen-py/fbzmq/Monitor/__init__.py
   ${THRIFT_DIR}/gen-py/fbzmq/Monitor/ttypes.py
-  DESTINATION /usr/lib/python2.7/site-packages/fbzmq/Monitor/
+  DESTINATION lib/python2.7/site-packages/fbzmq/Monitor/
 )
 
 #
