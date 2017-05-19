@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 
 include_directories(${CMAKE_SOURCE_DIR}/..)
+include_directories(${CMAKE_BINARY_DIR})
 
 # External third-party libraries
 find_library(DOUBLECONV double-conversion)
