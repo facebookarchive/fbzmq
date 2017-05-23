@@ -1,5 +1,0 @@
-# Blacklist everything within this directory
-*
-
-# Whitelist script files
-!*.sh
