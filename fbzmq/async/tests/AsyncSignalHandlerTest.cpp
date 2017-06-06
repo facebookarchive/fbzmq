@@ -12,6 +12,8 @@
 
 #include <fbzmq/async/AsyncSignalHandler.h>
 
+const char* malloc_conf = "background_thread:false";
+
 namespace fbzmq {
 
 sig_atomic_t unregisteredSignalCaught = 0;
