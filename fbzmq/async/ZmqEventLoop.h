@@ -66,7 +66,7 @@ class ZmqEventLoop : public Runnable {
  public:
   explicit ZmqEventLoop(uint64_t queueCapacity = 1e4);
 
-  virtual ~ZmqEventLoop();
+  ~ZmqEventLoop() override;
 
   /**
    * Make this non-copyable and non-movable

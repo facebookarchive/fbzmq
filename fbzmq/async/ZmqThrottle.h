@@ -37,7 +37,7 @@ class ZmqThrottle final : private ZmqTimeout {
       std::chrono::milliseconds timeout,
       TimeoutCallback callback);
 
-  ~ZmqThrottle() = default;
+  ~ZmqThrottle() override = default;
 
   /**
    * Overload function operator. This method exposes throttled version of
