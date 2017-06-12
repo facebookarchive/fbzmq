@@ -81,6 +81,7 @@ target_link_libraries(fbzmq
   ${THRIFT}
   ${THRIFTCPP2}
   ${THRIFTPROTOCOL}
+  ${ZSTD}
   ${FOLLY}
   ${GFLAGS}
   ${GLOG}
