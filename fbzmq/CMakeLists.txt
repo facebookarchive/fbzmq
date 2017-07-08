@@ -24,14 +24,12 @@ find_library(THRIFTPROTOCOL thriftprotocol PATHS)
 find_library(ZSTD zstd)
 
 #
-# Generate thrift defs for C++ and Python
+# Generate thrift defs for C++ only. For python install via setuptools
 #
 
 find_program(THRIFT1 thrift1)
 set(THRIFTC2
     python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
-set(THRIFTC
-    ${THRIFT1} -I ${CMAKE_SOURCE_DIR} -gen py:)
 
 set(THRIFT_DIR
     ${CMAKE_BINARY_DIR}/fbzmq/service/if)
@@ -45,12 +43,8 @@ add_custom_command(
     ${THRIFT_DIR}/gen-cpp2/Monitor_data.h
     ${THRIFT_DIR}/gen-cpp2/Monitor_types.cpp
     ${THRIFT_DIR}/gen-cpp2/Monitor_types.h
-    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/constants.py
-    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/__init__.py
-    ${THRIFT_DIR}/gen-py/fbzmq/Monitor/ttypes.py
   COMMAND
     ${THRIFTC2}json,optionals -o ${THRIFT_DIR} ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
-    ${THRIFTC} -o ${THRIFT_DIR} ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
 )
 
 #
@@ -143,18 +137,6 @@ install(FILES
 install(FILES
   ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift
   DESTINATION include/fbzmq/service/if
-)
-
-install(FILES
-  ${THRIFT_DIR}/gen-py/fbzmq/__init__.py
-  DESTINATION lib/python2.7/site-packages/fbzmq/
-)
-
-install(FILES
-  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/constants.py
-  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/__init__.py
-  ${THRIFT_DIR}/gen-py/fbzmq/Monitor/ttypes.py
-  DESTINATION lib/python2.7/site-packages/fbzmq/Monitor/
 )
 
 #
