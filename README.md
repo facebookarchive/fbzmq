@@ -121,6 +121,14 @@ directory)
 sudo make install
 ```
 
+## Build and Install python libraries
+
+```
+cd fbzmq/fbzmq/py
+python setup.py build
+sudo python setup.py install
+```
+
 ## How fbzmq works
 `zmq/*` are a straight forward C++ wrappers over raw libzmq objects (like
 zmq_msg_t, zmq_ctx_t, etc)  in C. ZmqEventLoop is an event loop which allows
