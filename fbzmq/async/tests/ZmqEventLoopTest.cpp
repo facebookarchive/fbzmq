@@ -91,7 +91,7 @@ class ZmqEventLoopTest final : public ZmqEventLoop {
         scheduleTimeout(std::chrono::milliseconds(110), [this]() noexcept {
           // This should never get advertised as we are going to cancel this
           // timeout
-          EXPECT_TRUE(false); // This should fail the test
+          ADD_FAILURE(); // This should fail the test
           count_ += 1;
         });
     EXPECT_EQ(1, getNumPendingTimeouts());
@@ -192,7 +192,7 @@ TEST(ZmqEventLoopTest, CopyCapture) {
   ZmqEventLoop evl;
 
   auto callback = std::function<void() noexcept>([&]() noexcept {
-    EXPECT_TRUE(true);
+    SUCCEED();
     evl.stop();
   });
   evl.scheduleTimeout(std::chrono::seconds(0), callback);
@@ -200,7 +200,7 @@ TEST(ZmqEventLoopTest, CopyCapture) {
   LOG(INFO) << "Starting loop...";
   evl.run();
   LOG(INFO) << "Stopping loop...";
-  EXPECT_TRUE(true);
+  SUCCEED();
 }
 
 TEST(ZmqEventLoopTest, RunInEventLoopApi) {
