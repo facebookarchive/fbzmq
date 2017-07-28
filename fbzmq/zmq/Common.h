@@ -57,6 +57,14 @@ folly::Expected<int, Error> poll(
     std::vector<PollItem> const& items,
     folly::Optional<std::chrono::milliseconds> timeout = folly::none);
 
+/**
+ * Proxy connects a frontend socket to a backend socket.
+ * Conceptually, data flows from frontend to backend.
+ * Depending on the socket types, replies may flow in the opposite direction.
+ */
+folly::Expected<folly::Unit, Error> proxy(
+    void *frontend, void *backend, void *capture);
+
 namespace util {
 
 /**

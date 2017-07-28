@@ -7,9 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+#include <thread>
 #include <gtest/gtest.h>
 
 #include <fbzmq/zmq/Common.h>
+#include <fbzmq/zmq/Context.h>
+#include <fbzmq/zmq/Socket.h>
+
+using namespace std;
 
 namespace fbzmq {
 
@@ -25,6 +30,27 @@ TEST(ZmqPollTest, EmptyPoll) {
   const auto ret =
       fbzmq::poll(pollItems, std::chrono::milliseconds(100)).value();
   EXPECT_EQ(0, ret);
+}
+
+TEST(ZmqProxy, EmptyProxy) {
+  bool proxyExit = false;
+
+  auto proxyThread = std::thread([&proxyExit]() {
+    fbzmq::Socket<ZMQ_ROUTER, fbzmq::ZMQ_SERVER> frontend;
+    fbzmq::Socket<ZMQ_DEALER, fbzmq::ZMQ_CLIENT> backend;
+    frontend.bind(fbzmq::SocketUrl{"tcp://*:5555"});
+    backend.connect(fbzmq::SocketUrl{"tcp://*:5556"});
+    fbzmq::proxy(
+      reinterpret_cast<void*>(*frontend),
+      reinterpret_cast<void*>(*backend),
+      nullptr);
+    proxyExit = true;
+  });
+
+
+  proxyThread.join();
+  EXPECT_TRUE(proxyExit);
+
 }
 
 } // namespace fbzmq
