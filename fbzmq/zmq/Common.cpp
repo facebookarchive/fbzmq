@@ -50,9 +50,7 @@ poll(
 
 folly::Expected<folly::Unit, Error> proxy(
     void *frontend, void *backend, void *capture) {
-  LOG(INFO) << "HAHAHA";
   auto rc = zmq_proxy(frontend, backend, capture);
-  LOG(INFO) << "HOHOHO";
   if (rc == 0) {
     return folly::Unit();
   }
