@@ -168,7 +168,7 @@ SocketImpl::close() noexcept {
     return;
   }
   const int rc = zmq_close(ptr_);
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   ptr_ = nullptr;
 }
 

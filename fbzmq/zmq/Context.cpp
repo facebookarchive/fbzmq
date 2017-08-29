@@ -19,12 +19,12 @@ Context::Context(
 
   if (numIoThreads) {
     const int rc = zmq_ctx_set(ptr_, ZMQ_IO_THREADS, numIoThreads.value());
-    CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+    CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   }
 
   if (numMaxSockets) {
     const int rc = zmq_ctx_set(ptr_, ZMQ_MAX_SOCKETS, numMaxSockets.value());
-    CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+    CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   }
 }
 
@@ -35,7 +35,7 @@ Context::~Context() {
   }
 
   const int rc = zmq_ctx_destroy(const_cast<void*>(ptr_));
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
 }
 
 Context::Context(Context&& other) noexcept : ptr_(other.ptr_) {

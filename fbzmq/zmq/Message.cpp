@@ -26,7 +26,7 @@ namespace fbzmq {
 
 Message::Message() noexcept {
   const int rc = zmq_msg_init(&msg_);
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
 }
 
 folly::Expected<Message, Error>
@@ -73,24 +73,24 @@ Message::operator=(Message&& other) noexcept {
 Message::Message(Message&& other) noexcept {
   zmq_msg_init(&msg_);
   const int rc = zmq_msg_move(&msg_, &(other.msg_));
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
 }
 
 Message::~Message() noexcept {
   const int rc = zmq_msg_close(&msg_);
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
 }
 
 Message::Message(Message const& other) noexcept {
   zmq_msg_init(&msg_);
   const int rc = zmq_msg_copy(&msg_, const_cast<zmq_msg_t*>(&(other.msg_)));
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
 }
 
 Message&
 Message::operator=(Message const& other) noexcept {
   const int rc = zmq_msg_copy(&msg_, const_cast<zmq_msg_t*>(&(other.msg_)));
-  CHECK_EQ(0, rc) << folly::errnoStr(zmq_errno());
+  CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   ;
   return *this;
 }
