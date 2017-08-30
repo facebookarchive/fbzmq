@@ -50,11 +50,18 @@ poll(
 
 folly::Expected<folly::Unit, Error> proxy(
     void *frontend, void *backend, void *capture) {
-  auto rc = zmq_proxy(frontend, backend, capture);
-  if (rc == 0) {
-    return folly::Unit();
+  while (true) {
+    auto rc = zmq_proxy(frontend, backend, capture);
+    if (rc == 0) {
+      return folly::Unit();
+    }
+
+    const auto errNum = zmq_errno();
+    if (errNum == EINTR) {
+      continue;
+    }
+    return folly::makeUnexpected(Error(errNum));
   }
-  return folly::makeUnexpected(Error(zmq_errno()));
 }
 
 namespace util {
