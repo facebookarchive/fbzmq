@@ -18,33 +18,29 @@ find_library(ZMQ zmq)
 
 # Facebook specific libraries
 find_library(FOLLY folly PATHS)
-find_library(THRIFT thrift PATHS)
-find_library(THRIFTCPP2 thriftcpp2 PATHS)
-find_library(THRIFTPROTOCOL thriftprotocol PATHS)
 find_library(ZSTD zstd)
+
+# Include Thrift
+find_program(THRIFT1 thrift1)
+find_library(THRIFTCPP2 thriftcpp2)
+find_library(THRIFTPROTOCOL thriftprotocol)
+find_path(THRIFT_INCLUDE thrift)
+set(THRIFT_TEMPLATES ${THRIFT_INCLUDE}/thrift/templates)
+include(${THRIFT_INCLUDE}/thrift/ThriftLibrary.cmake)
 
 #
 # Generate thrift defs for C++ only. For python install via setuptools
 #
-
-find_program(THRIFT1 thrift1)
-set(THRIFTC2
-    python -mthrift_compiler.main -I ${CMAKE_SOURCE_DIR} --gen cpp2:)
-
-set(THRIFT_DIR
-    ${CMAKE_BINARY_DIR}/fbzmq/service/if)
+set(THRIFT_DIR ${CMAKE_BINARY_DIR}/fbzmq/service/if)
 file(MAKE_DIRECTORY ${THRIFT_DIR})
 
-add_custom_command(
-  OUTPUT
-    ${THRIFT_DIR}/gen-cpp2/Monitor_constants.cpp
-    ${THRIFT_DIR}/gen-cpp2/Monitor_constants.h
-    ${THRIFT_DIR}/gen-cpp2/Monitor_data.cpp
-    ${THRIFT_DIR}/gen-cpp2/Monitor_data.h
-    ${THRIFT_DIR}/gen-cpp2/Monitor_types.cpp
-    ${THRIFT_DIR}/gen-cpp2/Monitor_types.h
-  COMMAND
-    ${THRIFTC2}json,optionals -o ${THRIFT_DIR} ${CMAKE_SOURCE_DIR}/service/if/Monitor.thrift \;
+thrift_library(
+  "Monitor" #file_name
+  "" #services
+  "cpp2" #language
+  "json,optionals" #options
+  "${CMAKE_SOURCE_DIR}/service/if" #file_path
+  "${THRIFT_DIR}" #output_path
 )
 
 #
@@ -65,16 +61,10 @@ add_library(fbzmq STATIC
   zmq/Message.cpp
   zmq/Socket.cpp
   zmq/SocketMonitor.cpp
-  ${THRIFT_DIR}/gen-cpp2/Monitor_constants.cpp
-  ${THRIFT_DIR}/gen-cpp2/Monitor_data.cpp
-  ${THRIFT_DIR}/gen-cpp2/Monitor_types.cpp
 )
-
+add_dependencies(fbzmq Monitor-cpp2)
 target_link_libraries(fbzmq
   ${DOUBLECONV}
-  ${THRIFT}
-  ${THRIFTCPP2}
-  ${THRIFTPROTOCOL}
   ${ZSTD}
   ${FOLLY}
   ${GFLAGS}
@@ -82,6 +72,8 @@ target_link_libraries(fbzmq
   ${ZMQ}
   ${SODIUM}
   ${PTHREAD}
+  ${THRIFTPROTOCOL}
+  Monitor-cpp2
 )
 
 install(TARGETS
@@ -159,54 +151,22 @@ if (BUILD_TESTS)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/examples/if)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests)
 
-  add_custom_command(
-    OUTPUT
-      ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.cpp
-      ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.h
-    COMMAND
-      ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests ${CMAKE_SOURCE_DIR}/zmq/tests/Test.thrift \;
+  thrift_library(
+    "Test" #file_name
+    "" #services
+    "cpp2" #language
+    "json,optionals" #options
+    "${CMAKE_SOURCE_DIR}/zmq/tests" #file_path
+    "${CMAKE_BINARY_DIR}/fbzmq/zmq/tests" #output_path
   )
 
-  add_library(fbzmq-test-if
-    ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests/gen-cpp2/Test_types.h
-  )
-
-  add_custom_command(
-    OUTPUT
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.cpp
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.h
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.cpp
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.h
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.cpp
-      ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.h
-    COMMAND
-      ${THRIFTC2}json,optionals -o ${CMAKE_BINARY_DIR}/fbzmq/examples/if ${CMAKE_SOURCE_DIR}/examples/if/Example.thrift \;
-  )
-
-  add_library(fbzmq-examples-if
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_constants.h
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_data.h
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.cpp
-    ${CMAKE_BINARY_DIR}/fbzmq/examples/if/gen-cpp2/Example_types.h
-  )
-
-  target_link_libraries(fbzmq-test-if
-    ${THRIFT}
-    ${THRIFTCPP2}
-    ${THRIFTPROTOCOL}
-    ${ZSTD}
-    ${FOLLY}
-  )
-
-  target_link_libraries(fbzmq-examples-if
-    ${THRIFT}
-    ${THRIFTCPP2}
-    ${THRIFTPROTOCOL}
-    ${ZSTD}
-    ${FOLLY}
+  thrift_library(
+    "Example" #file_name
+    "" #services
+    "cpp2" #language
+    "json,optionals" #options
+    "${CMAKE_SOURCE_DIR}/examples/if" #file_path
+    "${CMAKE_BINARY_DIR}/fbzmq/examples/if" #output_path
   )
 
   add_executable(signal_handler_test
@@ -299,7 +259,7 @@ if (BUILD_TESTS)
   )
   target_link_libraries(socket_test
     fbzmq
-    fbzmq-test-if
+    Test-cpp2
     ${GTEST}
     ${GTEST_MAIN}
   )
@@ -333,11 +293,11 @@ if (BUILD_TESTS)
   )
   target_link_libraries(zmq_server_example
     fbzmq
-    fbzmq-examples-if
+    Example-cpp2
   )
   target_link_libraries(zmq_client_example
     fbzmq
-    fbzmq-examples-if
+    Example-cpp2
   )
 
   add_test(SignalHandlerTest signal_handler_test)
