@@ -22,7 +22,7 @@ TEST(Error, ErrorOutput) {
   std::stringstream ss;
   fbzmq::Error err = {1, "TEST"};
   ss << err;
-  EXPECT_EQ("Error code: 1, 'TEST'", ss.str());
+  EXPECT_EQ("TEST (errno=1)", ss.str());
 }
 
 TEST(ZmqPollTest, EmptyPoll) {
