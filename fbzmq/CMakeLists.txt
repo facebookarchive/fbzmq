@@ -24,6 +24,8 @@ find_library(ZSTD zstd)
 find_program(THRIFT1 thrift1)
 find_library(THRIFTCPP2 thriftcpp2)
 find_library(THRIFTPROTOCOL thriftprotocol)
+find_library(PROTOCOL protocol)
+find_library(TRANSPORT transport)
 find_path(THRIFT_INCLUDE thrift)
 set(THRIFT_TEMPLATES ${THRIFT_INCLUDE}/thrift/templates)
 include(${THRIFT_INCLUDE}/thrift/ThriftLibrary.cmake)
@@ -34,7 +36,7 @@ include(${THRIFT_INCLUDE}/thrift/ThriftLibrary.cmake)
 set(THRIFT_DIR ${CMAKE_BINARY_DIR}/fbzmq/service/if)
 file(MAKE_DIRECTORY ${THRIFT_DIR})
 
-thrift_library(
+thrift_object(
   "Monitor" #file_name
   "" #services
   "cpp2" #language
@@ -47,7 +49,7 @@ thrift_library(
 # `fbzmq` library
 #
 
-add_library(fbzmq STATIC
+add_library(fbzmq
   async/AsyncSignalHandler.cpp
   async/ZmqEventLoop.cpp
   async/ZmqThrottle.cpp
@@ -61,8 +63,13 @@ add_library(fbzmq STATIC
   zmq/Message.cpp
   zmq/Socket.cpp
   zmq/SocketMonitor.cpp
+  $<TARGET_OBJECTS:Monitor-cpp2-obj>
 )
-add_dependencies(fbzmq Monitor-cpp2)
+
+if (BUILD_SHARED_LIBS)
+  set_target_properties(fbzmq PROPERTIES VERSION 1.0.0 SOVERSION 1)
+endif()
+
 target_link_libraries(fbzmq
   ${DOUBLECONV}
   ${ZSTD}
@@ -73,7 +80,8 @@ target_link_libraries(fbzmq
   ${SODIUM}
   ${PTHREAD}
   ${THRIFTPROTOCOL}
-  Monitor-cpp2
+  ${PROTOCOL}
+  ${TRANSPORT}
 )
 
 install(TARGETS
