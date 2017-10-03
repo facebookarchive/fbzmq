@@ -26,9 +26,9 @@ find_library(THRIFTCPP2 thriftcpp2)
 find_library(THRIFTPROTOCOL thriftprotocol)
 find_library(PROTOCOL protocol)
 find_library(TRANSPORT transport)
-find_path(THRIFT_INCLUDE thrift)
-set(THRIFT_TEMPLATES ${THRIFT_INCLUDE}/thrift/templates)
-include(${THRIFT_INCLUDE}/thrift/ThriftLibrary.cmake)
+find_path(THRIFT_COMPILER_INCLUDE thrift/templates)
+set(THRIFT_TEMPLATES ${THRIFT_COMPILER_INCLUDE}/thrift/templates)
+include(${THRIFT_COMPILER_INCLUDE}/thrift/ThriftLibrary.cmake)
 
 #
 # Generate thrift defs for C++ only. For python install via setuptools
