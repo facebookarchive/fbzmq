@@ -26,6 +26,6 @@ def fbcode_builder_spec(builder):
 
 
 config = {
-    'github_project': 'facebookincubator/fbzmq',
+    'github_project': 'facebook/fbzmq',
     'fbcode_builder_spec': fbcode_builder_spec,
 }
