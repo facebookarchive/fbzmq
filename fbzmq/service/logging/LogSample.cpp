@@ -35,14 +35,26 @@ LogSample::LogSample(std::chrono::system_clock::time_point timestamp)
     : timestamp_(timestamp) {
   json_ = folly::dynamic::object;
 
-  // Initialize most frequently used column types
-  json_[INT_KEY] = folly::dynamic::object;
-  json_[STRING_KEY] = folly::dynamic::object;
+  // add the timestamp to the json sample
+  addInt(kTimeCol, std::chrono::duration_cast<std::chrono::seconds>(
+    timestamp_.time_since_epoch()).count());
+}
 
-  // Initialize the timestamps
-  json_[INT_KEY][kTimeCol] = std::chrono::duration_cast<std::chrono::seconds>(
-                                 timestamp_.time_since_epoch())
-                                 .count();
+LogSample::LogSample(
+  folly::dynamic json,
+  std::chrono::system_clock::time_point timestamp)
+    : json_(json),
+      timestamp_(timestamp) {
+
+}
+
+LogSample
+LogSample::fromJson(const std::string& json) {
+    auto dynamic = folly::parseJson(json);
+    // will throw if this sample doesn't have a timestamp
+    auto timestamp = std::chrono::system_clock::time_point(
+      std::chrono::seconds(dynamic[INT_KEY][kTimeCol].getInt()));
+    return LogSample(dynamic, timestamp);
 }
 
 std::string
@@ -53,7 +65,22 @@ LogSample::toJson() const {
 }
 
 void
+LogSample::mergeSample(const LogSample& sample) {
+  auto dynamic = folly::parseJson(sample.toJson());
+  for(auto& kv : json_.items()) {
+    const auto& search = dynamic.find(kv.first);
+    if (search != dynamic.items().end()) {
+      kv.second.update_missing(search->second);
+    }
+  }
+}
+
+void
 LogSample::addInt(folly::StringPiece key, int64_t value) {
+  if (json_.find(INT_KEY) == json_.items().end()) {
+    json_.insert(INT_KEY, folly::dynamic::object());
+  }
+
   json_[INT_KEY][key] = value;
 }
 
@@ -68,6 +95,10 @@ LogSample::addDouble(folly::StringPiece key, double value) {
 
 void
 LogSample::addString(folly::StringPiece key, folly::StringPiece value) {
+  if (json_.find(STRING_KEY) == json_.items().end()) {
+    json_.insert(STRING_KEY, folly::dynamic::object());
+  }
+
   json_[STRING_KEY][key] = value;
 }
 

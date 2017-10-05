@@ -31,10 +31,14 @@ TEST(ZmqMonitorTest, BasicOperation) {
   // Create the serializer for write/read
   apache::thrift::CompactSerializer serializer;
 
+  fbzmq::LogSample sampleToMerge;
+  sampleToMerge.addString("domain", "terragraph");
   auto monitor = make_shared<ZmqMonitor>(
       std::string{"inproc://monitor-rep"},
       std::string{"inproc://monitor-pub"},
-      context);
+      context,
+      sampleToMerge);
+
 
   auto monitorThread = std::make_unique<std::thread>([monitor]() {
     LOG(INFO) << "ZmqMonitor thread starting";
@@ -127,8 +131,12 @@ TEST(ZmqMonitorTest, BasicOperation) {
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
       EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, publication.pubType);
       EXPECT_EQ("log_category", publication.eventLogPub.category);
-      vector<string> expectedSamples = {"log1", "log2"};
-      EXPECT_EQ(expectedSamples, publication.eventLogPub.samples);
+      auto ls1 = LogSample::fromJson(publication.eventLogPub.samples.at(0));
+      auto ls2 = LogSample::fromJson(publication.eventLogPub.samples.at(1));
+      EXPECT_EQ(ls1.getString("key"), "first sample");
+      EXPECT_EQ(ls1.getString("domain"), "terragraph");
+      EXPECT_EQ(ls2.getString("key"), "second sample");
+      EXPECT_EQ(ls2.getString("domain"), "terragraph");
     }
 
     LOG(INFO) << "subscriber thread finishing";
@@ -191,8 +199,13 @@ TEST(ZmqMonitorTest, BasicOperation) {
 
   // publish some logs
   thriftReq.cmd = thrift::MonitorCommand::LOG_EVENT;
+  fbzmq::LogSample sample1, sample2;
+  sample1.addString("key", "first sample");
+  sample2.addString("key", "second sample");
   thriftReq.eventLog = thrift::EventLog(
-      apache::thrift::FRAGILE, "log_category", {"log1", "log2"});
+      apache::thrift::FRAGILE,
+      "log_category",
+      {sample1.toJson(), sample2.toJson()});
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done publishing logs...";
 }

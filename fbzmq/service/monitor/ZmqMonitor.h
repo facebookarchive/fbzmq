@@ -14,8 +14,10 @@
 #include <boost/serialization/strong_typedef.hpp>
 #include <fbzmq/async/ZmqEventLoop.h>
 #include <fbzmq/service/if/gen-cpp2/Monitor_types.h>
+#include <fbzmq/service/logging/LogSample.h>
 #include <fbzmq/zmq/Zmq.h>
 #include <folly/gen/Base.h>
+#include <folly/Optional.h>
 #include <thrift/lib/cpp2/Thrift.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -29,11 +31,13 @@ class ZmqMonitor final : public ZmqEventLoop {
   ZmqMonitor(
       const std::string& monitorSubmitUrl,
       const std::string& monitorPubUrl,
-      Context& zmqContext)
+      Context& zmqContext,
+      const folly::Optional<LogSample>& logSampleToMerge = folly::none)
       : monitorSubmitUrl_(monitorSubmitUrl),
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
-        monitorPubSock_{zmqContext} {
+        monitorPubSock_{zmqContext},
+        logSampleToMerge_{logSampleToMerge} {
     // Prepare router socket to talk to Broker/other processes
     const int handover = 1;
     const auto handoverRet = monitorReceiveSock_.setSockOpt(
@@ -183,6 +187,17 @@ class ZmqMonitor final : public ZmqEventLoop {
       // simply forward, do not store logs
       thriftPub.pubType = thrift::PubType::EVENT_LOG_PUB;
       thriftPub.eventLogPub = thriftReq.eventLog;
+      if (logSampleToMerge_) {
+        for(auto& sample : thriftPub.eventLogPub.samples) {
+          try {
+            // throws if this sample doesn't have a timestamp
+            // in that case, lets just pass this sample along without appending
+            auto ls = LogSample::fromJson(sample);
+            ls.mergeSample(*logSampleToMerge_);
+            sample = ls.toJson();
+          } catch (...) {}
+        }
+      }
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
       break;
@@ -205,6 +220,9 @@ class ZmqMonitor final : public ZmqEventLoop {
 
   // track critical statistics, e.g., number of times functions are called
   CounterMap counters_;
+
+  // LogSample to merge to each LogSample we recv
+  const folly::Optional<LogSample> logSampleToMerge_;
 };
 
 } // namespace fbzmq

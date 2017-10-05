@@ -54,6 +54,12 @@ class LogSample {
    */
   explicit LogSample(std::chrono::system_clock::time_point timestamp);
 
+  LogSample(
+    folly::dynamic json,
+    std::chrono::system_clock::time_point timestamp);
+
+  static LogSample fromJson(const std::string& json);
+
   /**
    * Get json representation of the Sample. Can easily be sent to monitoring
    * service over write.
@@ -68,6 +74,10 @@ class LogSample {
     return timestamp_;
   }
 
+  /**
+   * Merges two LogSample objects, preferring the values in this.
+   */
+  void mergeSample(const LogSample& sample);
   /**
    * APIs to add different types of values
    */
