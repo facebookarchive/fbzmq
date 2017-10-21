@@ -8,7 +8,7 @@
  */
 
 #include <folly/Memory.h>
-#include <folly/ThreadName.h>
+#include <folly/system/ThreadName.h>
 #include <gtest/gtest.h>
 
 #include <fbzmq/async/ZmqEventLoop.h>
