@@ -74,7 +74,7 @@ ZmqEventLoop::~ZmqEventLoop() {
 void
 ZmqEventLoop::run() {
   // Must not be running when started/resumed
-  CHECK(!isRunning()) << "Calling run() on arleady running thread";
+  CHECK(!isRunning()) << "Calling run() on already running thread";
 
   // Store the current threadId. All API calls must happen within thread
   threadId_.store(pthread_self(), std::memory_order_relaxed);
