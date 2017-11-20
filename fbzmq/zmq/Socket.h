@@ -107,10 +107,10 @@ class SocketImpl {
    * to set multiple socket options to turn keep alive settings.
    */
   folly::Expected<folly::Unit, Error> setKeepAlive(
-      int keepAlive,
-      int keepAliveIdle = -1,
-      int keepAliveCnt = -1,
-      int keepAliveIntvl = -1) noexcept;
+      int keepAlive /* SO_KEEPALIVE */,
+      int keepAliveIdle = -1 /* TCP_KEEPCNT(or TCP_KEEPALIVE on some OS) */,
+      int keepAliveCnt = -1 /* TCP_KEEPCNT */,
+      int keepAliveIntvl = -1 /* TCP_KEEPINTVL */) noexcept;
 
   /**
    * Close socket
