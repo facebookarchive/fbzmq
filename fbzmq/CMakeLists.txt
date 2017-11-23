@@ -43,6 +43,7 @@ thrift_object(
   "json,optionals" #options
   "${CMAKE_SOURCE_DIR}/service/if" #file_path
   "${THRIFT_DIR}" #output_path
+  "fbzmq/service/if" #include_prefix
 )
 
 #
@@ -149,8 +150,6 @@ if (BUILD_TESTS)
 
   enable_testing()
 
-  include_directories(${CMAKE_BINARY_DIR})
-
   find_library(GTEST gtest)
   find_library(GTEST_MAIN gtest_main)
   find_library(ZSTD zstd)
@@ -166,6 +165,7 @@ if (BUILD_TESTS)
     "json,optionals" #options
     "${CMAKE_SOURCE_DIR}/zmq/tests" #file_path
     "${CMAKE_BINARY_DIR}/fbzmq/zmq/tests" #output_path
+    "fbzmq/zmq/tests" #include_prefix
   )
 
   thrift_library(
@@ -175,6 +175,7 @@ if (BUILD_TESTS)
     "json,optionals" #options
     "${CMAKE_SOURCE_DIR}/examples/if" #file_path
     "${CMAKE_BINARY_DIR}/fbzmq/examples/if" #output_path
+    "fbzmq/examples/if" #include_prefix
   )
 
   add_executable(signal_handler_test
