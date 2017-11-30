@@ -1,4 +1,7 @@
 # fbzmq
+
+[![Build Status](https://travis-ci.org/facebook/fbzmq.svg?branch=master)](https://travis-ci.org/facebook/fbzmq)
+
 `fbzmq` provides a framework for writing services in C++ while leveraging the
 awesomeness of `libzmq` (message passing semantics). At a high level it provides
 - Lightweight C++ wrapper over `libzmq` which leverages newer C++ constructs
