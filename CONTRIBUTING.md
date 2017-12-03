@@ -2,6 +2,9 @@
 We want to make contributing to this project as easy and transparent as
 possible.
 
+## Code of Conduct
+The code of conduct is described in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+
 ## Our Development Process
 This library is actively being used by several projects within Facebook. We
 don't expect any major changes in APIs exposed by libraries, however bug
