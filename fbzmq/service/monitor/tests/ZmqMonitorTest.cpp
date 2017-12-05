@@ -37,7 +37,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
       std::string{"inproc://monitor-rep"},
       std::string{"inproc://monitor-pub"},
       context,
-      sampleToMerge);
+      sampleToMerge,
+      std::chrono::seconds(2));
 
 
   auto monitorThread = std::make_unique<std::thread>([monitor]() {
@@ -196,6 +197,16 @@ TEST(ZmqMonitorTest, BasicOperation) {
   EXPECT_EQ(9012, keyValueMap["foobar"].value);
   // bumped new counter
   EXPECT_EQ(1, keyValueMap["baz"].value);
+
+  // wait until counters expire
+  sleep(6);
+
+  thriftReq.cmd = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
+  dealer.sendThriftObj(thriftReq, serializer).value();
+  thriftNamesRep =
+      dealer.recvThriftObj<thrift::CounterNamesResponse>(serializer).value();
+  LOG(INFO) << "got counter names...";
+  EXPECT_TRUE(thriftNamesRep.counterNames.empty());
 
   // publish some logs
   thriftReq.cmd = thrift::MonitorCommand::LOG_EVENT;

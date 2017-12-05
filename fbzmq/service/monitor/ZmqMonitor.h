@@ -13,6 +13,7 @@
 
 #include <boost/serialization/strong_typedef.hpp>
 #include <fbzmq/async/ZmqEventLoop.h>
+#include <fbzmq/async/ZmqTimeout.h>
 #include <fbzmq/service/if/gen-cpp2/Monitor_types.h>
 #include <fbzmq/service/logging/LogSample.h>
 #include <fbzmq/zmq/Zmq.h>
@@ -26,18 +27,35 @@ namespace fbzmq {
 using CounterMap =
     std::unordered_map<std::string /* counter name */, thrift::Counter>;
 
+using CounterTimestampMap = std::unordered_map<
+    std::string /* counter name */,
+    std::pair<
+        thrift::Counter /* counter value */,
+        std::chrono::time_point<
+            std::chrono::steady_clock> /* last update ts*/>>;
+const std::chrono::seconds kAlivenessCheckInterval{180};
+
 class ZmqMonitor final : public ZmqEventLoop {
  public:
   ZmqMonitor(
       const std::string& monitorSubmitUrl,
       const std::string& monitorPubUrl,
       Context& zmqContext,
-      const folly::Optional<LogSample>& logSampleToMerge = folly::none)
+      const folly::Optional<LogSample>& logSampleToMerge = folly::none,
+      const std::chrono::seconds alivenessCheckInterval =
+          kAlivenessCheckInterval)
       : monitorSubmitUrl_(monitorSubmitUrl),
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
         monitorPubSock_{zmqContext},
+        alivenessCheckInterval_{alivenessCheckInterval},
         logSampleToMerge_{logSampleToMerge} {
+    // Schedule periodic timer for counters aliveness check
+    const bool isPeriodic = true;
+    monitorTimer_ = fbzmq::ZmqTimeout::make(
+        this, [this]() noexcept { purgeStaleCounters(); });
+    monitorTimer_->scheduleTimeout(alivenessCheckInterval_, isPeriodic);
+
     // Prepare router socket to talk to Broker/other processes
     const int handover = 1;
     const auto handoverRet = monitorReceiveSock_.setSockOpt(
@@ -125,22 +143,24 @@ class ZmqMonitor final : public ZmqEventLoop {
     const auto thriftReq = maybeThriftReq.value();
 
     switch (thriftReq.cmd) {
-    case thrift::MonitorCommand::SET_COUNTER_VALUES:
+    case thrift::MonitorCommand::SET_COUNTER_VALUES:{
+      auto now = std::chrono::steady_clock::now();
       for (auto const& kv : thriftReq.counterSetParams.counters) {
-        counters_[kv.first] = kv.second;
+        counters_[kv.first].first = kv.second;
+        counters_[kv.first].second = now;
       }
       // Dump new monitor values to the publish socket.
       thriftPub.pubType = thrift::PubType::COUNTER_PUB;
       thriftPub.counterPub.counters = thriftReq.counterSetParams.counters;
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
-      break;
+    } break;
 
     case thrift::MonitorCommand::GET_COUNTER_VALUES:
       for (auto const& counterName : thriftReq.counterGetParams.counterNames) {
         auto it = counters_.find(counterName);
         if (it != counters_.end()) {
-          thriftValueRep.counters[counterName] = it->second;
+          thriftValueRep.counters[counterName] = it->second.first;
         }
       }
       monitorReceiveSock_.sendMultiple(
@@ -157,13 +177,16 @@ class ZmqMonitor final : public ZmqEventLoop {
       break;
 
     case thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA:
-      thriftValueRep.counters.insert(counters_.begin(), counters_.end());
+      for (auto const& kv : counters_) {
+        thriftValueRep.counters.emplace(kv.first, kv.second.first);
+      }
       monitorReceiveSock_.sendMultiple(
           requestIdMsg,
           Message::fromThriftObj(thriftValueRep, serializer_).value());
       break;
 
-    case thrift::MonitorCommand::BUMP_COUNTER:
+    case thrift::MonitorCommand::BUMP_COUNTER: {
+      auto now = std::chrono::steady_clock::now();
       for (auto const& name : thriftReq.counterBumpParams.counterNames) {
         if (counters_.find(name) == counters_.end()) {
           thrift::Counter counter(
@@ -171,17 +194,18 @@ class ZmqMonitor final : public ZmqEventLoop {
               0,
               thrift::CounterValueType::COUNTER,
               std::time(nullptr));
-          counters_.emplace(name, counter);
+          counters_.emplace(name, std::make_pair(counter, now));
         }
-        auto& counter = counters_[name];
+        auto& counter = counters_[name].first;
         ++counter.value;
+        counters_[name].second = now;
         thriftPub.counterPub.counters.emplace(name, counter);
       }
       // Dump new counter values to the publish socket.
       thriftPub.pubType = thrift::PubType::COUNTER_PUB;
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
-      break;
+    } break;
 
     case thrift::MonitorCommand::LOG_EVENT:
       // simply forward, do not store logs
@@ -209,6 +233,30 @@ class ZmqMonitor final : public ZmqEventLoop {
     VLOG(4) << "processMonitorRequest has finished";
   }
 
+  // Check last update timestamp of each counter
+  // If the counter is not active for long time, remove this counter
+  void
+  purgeStaleCounters() {
+    // Scan through all counters to find out those have not been updated for
+    // longer than alivenessCheckInterval
+    auto const& current = std::chrono::steady_clock::now();
+
+    for (auto it = counters_.begin(); it != counters_.end();) {
+      auto const& key = it->first;
+      auto const& lastTs = it->second.second;
+      // remove expired counter
+      if (current - lastTs > alivenessCheckInterval_) {
+        LOG(INFO) << "Expired Counter: " << key;
+        it = counters_.erase(it);
+        continue;
+      }
+      ++it;
+    }
+  }
+
+  // Timer for checking counter aliveness periodically
+  std::unique_ptr<ZmqTimeout> monitorTimer_;
+
   const std::string monitorSubmitUrl_;
   const std::string monitorPubUrl_;
 
@@ -219,7 +267,10 @@ class ZmqMonitor final : public ZmqEventLoop {
   apache::thrift::CompactSerializer serializer_;
 
   // track critical statistics, e.g., number of times functions are called
-  CounterMap counters_;
+  CounterTimestampMap counters_;
+
+  // time interval of counter aliveness check
+  const std::chrono::seconds alivenessCheckInterval_;
 
   // LogSample to merge to each LogSample we recv
   const folly::Optional<LogSample> logSampleToMerge_;

@@ -18,7 +18,7 @@ enum MonitorCommand {
   SET_COUNTER_VALUES = 1,
   GET_COUNTER_VALUES = 2,
   DUMP_ALL_COUNTER_NAMES = 3,
-  DUMP_ALL_COUNTER_DATA = 4
+  DUMP_ALL_COUNTER_DATA = 4,
   BUMP_COUNTER = 5,
 
   // operations on logs, which are not saved in the monitor
