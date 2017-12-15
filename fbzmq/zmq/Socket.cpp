@@ -220,7 +220,7 @@ SocketImpl::recvOne(folly::Optional<std::chrono::milliseconds>
   //  If we got a reply, process it
   if (pollItems.front().revents & ZMQ_POLLIN) {
     // Receive raw message from socket
-    return recv(baseFlags_);
+    return recv(baseFlags_ & ZMQ_DONTWAIT);
   }
   return folly::makeUnexpected(Error());
 }
