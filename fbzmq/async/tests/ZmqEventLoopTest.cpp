@@ -190,6 +190,8 @@ TEST(ZmqEventLoopTest, BasicCommunication) {
  */
 TEST(ZmqEventLoopTest, CopyCapture) {
   ZmqEventLoop evl;
+  auto const& now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
 
   auto callback = std::function<void() noexcept>([&]() noexcept {
     SUCCEED();
@@ -199,6 +201,7 @@ TEST(ZmqEventLoopTest, CopyCapture) {
 
   LOG(INFO) << "Starting loop...";
   evl.run();
+  EXPECT_GE(evl.getTimestamp(), now);
   LOG(INFO) << "Stopping loop...";
   SUCCEED();
 }
@@ -286,6 +289,8 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
 
   uint32_t count = 0;
   auto now = std::chrono::steady_clock::now();
+  auto system_now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
   for (uint32_t i = 1; i <= kCount; ++i) {
     evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
       EXPECT_TRUE(evl.isRunning());
@@ -301,6 +306,7 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   EXPECT_EQ(0, count);
   evl.run();
   EXPECT_EQ(kCount, count);
+  EXPECT_GE(evl.getTimestamp(), system_now);
   EXPECT_FALSE(evl.isRunning());
 
   //
@@ -309,8 +315,10 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   //
 
   count = 0;
+  system_now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
   for (uint32_t i = 1; i <= kCount; ++i) {
-    auto now = std::chrono::steady_clock::now();
+    now = std::chrono::steady_clock::now();
     evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
       EXPECT_TRUE(evl.isRunning());
       ++count;
@@ -326,12 +334,15 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   EXPECT_EQ(0, count);
   evl.run();
   EXPECT_EQ(kCount, count);
+  EXPECT_GE(evl.getTimestamp(), system_now);
   EXPECT_FALSE(evl.isRunning());
 }
 
 TEST(ZmqEventLoopTest, sendRecvMultipart) {
   Context context;
   ZmqEventLoop evl;
+  auto now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
   const SocketUrl socketUrl{"inproc://server_url"};
 
   Socket<ZMQ_REP, ZMQ_SERVER> serverSock{context};
@@ -367,7 +378,59 @@ TEST(ZmqEventLoopTest, sendRecvMultipart) {
   auto msgs = clientSock.recvMultiple().value();
   LOG(INFO) << "Received messages.";
   EXPECT_EQ(2, msgs.size());
+  EXPECT_GE(evl.getTimestamp(), now);
 
+  evlThread.join();
+}
+
+TEST(ZmqEventLoopTest, veriyHealthCheckDuration) {
+  Context context;
+  ZmqEventLoop evl(1e4, std::chrono::seconds(1));
+
+  auto callback = std::function<void() noexcept>([&]() noexcept {
+    // Verify that even timeout is scheduled far later, evl gets
+    // lastestActivityTs_ updated every healthCheckDuration
+    auto now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+    EXPECT_GE(1, (now - evl.getTimestamp()).count());
+    evl.stop();
+  });
+  evl.scheduleTimeout(std::chrono::seconds(3), callback);
+
+  std::thread evlThread([&]() noexcept {
+    LOG(INFO) << "Starting event loop";
+    evl.run();
+    LOG(INFO) << "Event loop stopped";
+  });
+  evl.waitUntilRunning();
+
+  evlThread.join();
+}
+
+TEST(ZmqEventLoopTest, emptyTimeout) {
+  Context context;
+  ZmqEventLoop evl(1e4, std::chrono::seconds(1));
+
+  std::thread evlThread([&]() noexcept {
+    LOG(INFO) << "Starting event loop";
+    evl.run();
+    LOG(INFO) << "Event loop stopped";
+  });
+  evl.waitUntilRunning();
+
+  // Verify that even no timeout is scheduled, evl gets lastestActivityTs_
+  // updated every healthCheckDuration
+  auto now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
+  EXPECT_GE(1, (now - evl.getTimestamp()).count());
+
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+
+  now = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch());
+  EXPECT_GE(1, (now - evl.getTimestamp()).count());
+
+  evl.stop();
   evlThread.join();
 }
 

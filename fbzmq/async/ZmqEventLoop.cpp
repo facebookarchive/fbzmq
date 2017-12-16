@@ -20,8 +20,17 @@
 
 namespace fbzmq {
 
-ZmqEventLoop::ZmqEventLoop(uint64_t queueCapacity)
-    : callbackQueue_(queueCapacity) {
+ZmqEventLoop::ZmqEventLoop(
+  uint64_t queueCapacity,
+  std::chrono::seconds healthCheckDuration)
+    : callbackQueue_(queueCapacity),
+      healthCheckDuration_(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          healthCheckDuration)) {
+  // update aliveness timestamp
+  lastestActivityTs_.store(std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::system_clock::now().time_since_epoch()));
+
   // Create signal-fd for start/stop events
   if ((signalFd_ = eventfd(0 /* init-value */, 0 /* flags */)) < 0) {
     LOG(FATAL) << "ZmqEventLoop: Failed to create an eventfd.";
@@ -104,7 +113,6 @@ ZmqEventLoop::addSocket(
   if (socketMap_.count(socketPtr)) {
     throw std::runtime_error("Socket callback already registered.");
   }
-
   auto subscription =
       std::make_shared<PollSubscription>(events, std::move(callback));
   socketMap_.emplace(socketPtr, std::move(subscription));
@@ -216,9 +224,12 @@ ZmqEventLoop::loopForever() {
       // wait time can be negative if scheduled-timeout is already active
       pollTimeout = std::max(std::chrono::milliseconds(1), waitTime);
     } else {
-      // No pending timeouts. Use infinite polling
-      pollTimeout = std::chrono::milliseconds(-1);
+      // No pending timeouts. Use default poll-duration
+      pollTimeout = healthCheckDuration_;
     }
+
+    // Always make sure we go through loop once in every healthCheckDuration_
+    pollTimeout = std::min(pollTimeout, healthCheckDuration_);
 
     // Perform polling on sockets
     VLOG(5) << "ZmqEventLoop: Polling with poll timeout of "
@@ -250,6 +261,10 @@ ZmqEventLoop::loopForever() {
       timeoutHeap_.pop();
       (*callbackPtr)();
     }
+
+    // update aliveness timestamp
+    lastestActivityTs_.store(std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()));
   } // end while
 }
 

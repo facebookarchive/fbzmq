@@ -64,7 +64,17 @@ BOOST_STRONG_TYPEDEF(uintptr_t, RawZmqSocketPtr)
  */
 class ZmqEventLoop : public Runnable {
  public:
-  explicit ZmqEventLoop(uint64_t queueCapacity = 1e4);
+  /**
+   * ZmqEventLoop constructor
+   *
+   * We want to make sure to go through event loop at least
+   * every healthCheckDuration in worst case to avoid infinite polling or
+   * long timeout which casuses unnecessary crash if there's health check
+   * mechanism monitoring on lastestActivityTs_
+   */
+  explicit ZmqEventLoop(
+    uint64_t queueCapacity = 1e4,
+    std::chrono::seconds healthCheckDuration = std::chrono::seconds(30));
 
   ~ZmqEventLoop() override;
 
@@ -217,6 +227,16 @@ class ZmqEventLoop : public Runnable {
     return activeTimeouts_.size();
   }
 
+  /**
+   * Returns latest activity timestamp.
+   * This helps in exposing health condition of current thread to monitoring
+   * mechanism.
+   */
+   std::chrono::seconds
+   getTimestamp() const {
+     return lastestActivityTs_;
+   }
+
  private:
   /**
    * Utility struct to store information about poll-item and its callback
@@ -316,6 +336,12 @@ class ZmqEventLoop : public Runnable {
   // Monotonically increasing integer used to assign IDs to newly scheduled
   // timeouts
   int64_t timeoutId_{0};
+
+  // Timestamp of latest callback gets invoked
+  std::atomic<std::chrono::seconds> lastestActivityTs_;
+
+  // Health check duration
+  const std::chrono::milliseconds healthCheckDuration_;
 };
 
 } // namespace fbzmq
