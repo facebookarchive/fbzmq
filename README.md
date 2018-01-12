@@ -71,6 +71,13 @@ should work on all Linux based platforms without any issues.
 
 ## Building fbzmq
 
+### Repo Directory Structure
+
+At the top level of this repo are the `build` and `fbzmq` directories. Under the
+former is a tool, `fbcode_builder`, that contains scripts for generating a
+docker context to build the project. The `fbzmq` directory contains the
+source for the project.
+
 ### Dependencies
 * `cmake`
 * `gflags`
@@ -81,37 +88,29 @@ should work on all Linux based platforms without any issues.
 * `folly`
 * `fbthrift`
 
-### Dependencies Installation
-`build` directory contains scripts which will help you install all dependencies
-on the fresh copy of specified Linux distribution. Once all dependencies are
-installed, you can proceed with build step.
+### One Step Build - Ubuntu-16.04
 
-If you have a different Linux distribution then you can manually install above
-specified dependencies and development tools.
+We've provided a script, `build/build_fbzmq.sh`, well tested on
+Ubuntu-16.04, to install all necessary dependencies, compile fbzmq and install
+C++ binaries as well as python tools. Please modify the script as needed for
+your platform. Also, note that some library dependencies require a newer version
+than provided by the default package manager on the system and hence we are
+compiling them from source instead of installing via the package manager. Please
+see the script for those instances and the required versions.
 
-```
-cd build
+### Build using Docker
 
-// On Ubuntu 14.04
-sudo bash deps_ubuntu_14.04.sh
+Learn more [here.](https://github.com/facebook/fbzmq/blob/master/build/fbcode_builder/README.md)
 
-// On Ubuntu 16.04
-sudo bash deps_ubuntu_16.04.sh
-
-// On CentOS
-sudo bash deps_centos.sh
-```
 
 ### Build Steps
 ```
 // Step into `build` directory
 cd build
 
-// Generate make files
-cmake ..
+//  Install dependencies and fbzmq
+sudo bash ./build_fbzmq.sh
 
-// Build and run-tests
-make
 make test
 ```
 
