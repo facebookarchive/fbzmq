@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 #include <chrono>
 
 #include <fbzmq/async/AsyncSignalHandler.h>

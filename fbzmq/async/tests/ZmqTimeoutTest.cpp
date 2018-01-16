@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 
 #include <fbzmq/async/ZmqEventLoop.h>
 #include <fbzmq/async/ZmqTimeout.h>

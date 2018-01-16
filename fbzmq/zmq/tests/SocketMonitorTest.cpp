@@ -12,6 +12,7 @@
 #include <folly/Format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 
 #include <fbzmq/zmq/SocketMonitor.h>
 

@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 
 #include <fbzmq/zmq/Common.h>
 #include <fbzmq/zmq/Context.h>

@@ -10,6 +10,7 @@
 #include <folly/Memory.h>
 #include <folly/system/ThreadName.h>
 #include <gtest/gtest.h>
+#include <gflags/gflags.h>
 
 #include <fbzmq/async/ZmqEventLoop.h>
 #include <fbzmq/zmq/Zmq.h>

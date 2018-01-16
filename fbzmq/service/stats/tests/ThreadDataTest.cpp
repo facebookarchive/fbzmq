@@ -12,6 +12,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <gflags/gflags.h>
 #include <fbzmq/service/stats/ThreadData.h>
 
 TEST(ThreadDataTest, ApiTest) {
