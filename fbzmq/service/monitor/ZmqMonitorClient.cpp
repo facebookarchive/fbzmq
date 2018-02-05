@@ -182,4 +182,33 @@ ZmqMonitorClient::addEventLog(thrift::EventLog const& eventLog) {
   }
 }
 
+folly::Optional<std::vector<thrift::EventLog>>
+ZmqMonitorClient::getLastEventLogs() {
+  thrift::MonitorRequest thriftReq;
+  thriftReq.cmd = thrift::MonitorCommand::GET_EVENT_LOGS;
+
+  const auto ret = monitorCmdSock_.sendOne(
+      Message::fromThriftObj(thriftReq, serializer_).value());
+  if (ret.hasError()) {
+    LOG(ERROR) << "getLastEventLogs: error sending message " << ret.error();
+    return folly::none;
+  }
+
+  const auto respMsg = monitorCmdSock_.recvOne();
+  if (respMsg.hasError()) {
+    LOG(ERROR) << "getLastEventLogs: error receiving message "
+                  << respMsg.error();
+    return folly::none;
+  }
+
+  const auto response =
+      respMsg.value().readThriftObj<thrift::EventLogsResponse>(serializer_);
+  if (response.hasError()) {
+    LOG(ERROR) << "getLastEventLogs: error reading message" << response.error();
+    return folly::none;
+  }
+
+  return response.value().eventLogs;
+}
+
 } // namespace fbzmq

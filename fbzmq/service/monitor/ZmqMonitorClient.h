@@ -72,6 +72,11 @@ class ZmqMonitorClient {
    */
   void addEventLog(thrift::EventLog const& eventLog);
 
+  /**
+   * Get last event logs from ZmqMonitor
+   */
+  folly::Optional<std::vector<thrift::EventLog>> getLastEventLogs();
+
  private:
   //
   // Mutable state

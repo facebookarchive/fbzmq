@@ -181,6 +181,14 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
       apache::thrift::FRAGILE, "log_category", {"log1", "log2"});
   zmqMonitorClient->addEventLog(eventLog);
   LOG(INFO) << "done publishing logs...";
+
+  auto lastEventLogs = zmqMonitorClient->getLastEventLogs();
+  // number of eventLogs
+  EXPECT_EQ(1, lastEventLogs->size());
+  EXPECT_EQ("log_category", lastEventLogs->at(0).category);
+  EXPECT_EQ("log1", lastEventLogs->at(0).samples[0]);
+  EXPECT_EQ("log2", lastEventLogs->at(0).samples[1]);
+  LOG(INFO) << "done with last event logs...";
 }
 
 int

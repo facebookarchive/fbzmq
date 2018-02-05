@@ -34,6 +34,7 @@ using CounterTimestampMap = std::unordered_map<
         std::chrono::time_point<
             std::chrono::steady_clock> /* last update ts*/>>;
 const std::chrono::seconds kAlivenessCheckInterval{180};
+const size_t kMaxLogEvents{100};
 
 class ZmqMonitor final : public ZmqEventLoop {
  public:
@@ -43,12 +44,14 @@ class ZmqMonitor final : public ZmqEventLoop {
       Context& zmqContext,
       const folly::Optional<LogSample>& logSampleToMerge = folly::none,
       const std::chrono::seconds alivenessCheckInterval =
-          kAlivenessCheckInterval)
+          kAlivenessCheckInterval,
+      const size_t maxLogEvents = kMaxLogEvents)
       : monitorSubmitUrl_(monitorSubmitUrl),
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
         monitorPubSock_{zmqContext},
         alivenessCheckInterval_{alivenessCheckInterval},
+        maxLogEvents_{maxLogEvents},
         logSampleToMerge_{logSampleToMerge} {
     // Schedule periodic timer for counters aliveness check
     const bool isPeriodic = true;
@@ -111,6 +114,7 @@ class ZmqMonitor final : public ZmqEventLoop {
  private:
   ZmqMonitor(ZmqMonitor const&) = delete;
   ZmqMonitor& operator=(ZmqMonitor const&) = delete;
+  std::list<thrift::EventLog> eventLogs_;
 
   // process a monitor request pending oni monitorReceiveSock_
   void
@@ -222,9 +226,24 @@ class ZmqMonitor final : public ZmqEventLoop {
           } catch (...) {}
         }
       }
+      // save the event log in local queue
+      if (eventLogs_.size() >= maxLogEvents_) {
+          eventLogs_.pop_front();
+      }
+      eventLogs_.push_back(thriftReq.eventLog);
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
       break;
+
+    case thrift::MonitorCommand::GET_EVENT_LOGS: {
+      thrift::EventLogsResponse thriftEventLogsRep;
+      for (auto it = eventLogs_.begin(); it != eventLogs_.end(); ++it) {
+          thriftEventLogsRep.eventLogs.emplace_back(*it);
+      }
+      monitorReceiveSock_.sendMultiple(
+          requestIdMsg,
+          Message::fromThriftObj(thriftEventLogsRep, serializer_).value());
+     } break;
 
     default:
       LOG(ERROR) << "Unknown monitor command received";
@@ -271,6 +290,9 @@ class ZmqMonitor final : public ZmqEventLoop {
 
   // time interval of counter aliveness check
   const std::chrono::seconds alivenessCheckInterval_;
+
+  // Number of last log events to queue
+  const size_t maxLogEvents_{0};
 
   // LogSample to merge to each LogSample we recv
   const folly::Optional<LogSample> logSampleToMerge_;
