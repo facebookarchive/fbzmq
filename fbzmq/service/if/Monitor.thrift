@@ -8,6 +8,7 @@
  */
 
 namespace cpp2 fbzmq.thrift
+namespace php Fbzmq
 namespace py fbzmq.Monitor
 
 typedef map<string, Counter>
