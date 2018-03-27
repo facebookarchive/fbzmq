@@ -214,7 +214,7 @@ class ZmqMonitor final : public ZmqEventLoop {
     case thrift::MonitorCommand::LOG_EVENT:
       // simply forward, do not store logs
       thriftPub.pubType = thrift::PubType::EVENT_LOG_PUB;
-      thriftPub.eventLogPub = thriftReq.eventLog;
+      thriftPub.eventLogPub = std::move(thriftReq.eventLog);
       if (logSampleToMerge_) {
         for(auto& sample : thriftPub.eventLogPub.samples) {
           try {
@@ -230,7 +230,7 @@ class ZmqMonitor final : public ZmqEventLoop {
       if (eventLogs_.size() >= maxLogEvents_) {
           eventLogs_.pop_front();
       }
-      eventLogs_.push_back(thriftReq.eventLog);
+      eventLogs_.push_back(thriftPub.eventLogPub);
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
       break;
