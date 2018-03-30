@@ -124,4 +124,22 @@ Message::empty() const noexcept {
   return (size() == 0);
 }
 
+folly::Expected<int, Error>
+Message::getProperty(int property) const noexcept {
+  const int value = zmq_msg_get(&msg_, property);
+  if (value == -1) {
+    return folly::makeUnexpected(Error());
+  }
+  return value;
+}
+
+folly::Expected<std::string, Error>
+Message::getMetadataProperty(std::string const& property) const noexcept {
+  const char *value = zmq_msg_gets(&msg_, property.c_str());
+  if (value == nullptr) {
+    return folly::makeUnexpected(Error());
+  }
+  return std::string(value);
+}
+
 } // namespace fbzmq

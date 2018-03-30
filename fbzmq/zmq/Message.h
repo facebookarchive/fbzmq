@@ -171,6 +171,17 @@ class Message {
    */
   bool empty() const noexcept;
 
+  /**
+   * Retrieve the int value of a property for this message
+   */
+  folly::Expected<int, Error> getProperty(int property) const noexcept;
+
+  /**
+   * Retrieve the string value of a metadata property for this message
+   */
+  folly::Expected<std::string, Error> getMetadataProperty(
+      std::string const& property) const noexcept;
+
  private:
   friend class detail::SocketImpl;
 
