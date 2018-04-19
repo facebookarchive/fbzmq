@@ -135,7 +135,8 @@ Message::getProperty(int property) const noexcept {
 
 folly::Expected<std::string, Error>
 Message::getMetadataProperty(std::string const& property) const noexcept {
-  const char *value = zmq_msg_gets(&msg_, property.c_str());
+  const char *value = zmq_msg_gets(
+      const_cast<zmq_msg_t*>(&msg_), property.c_str());
   if (value == nullptr) {
     return folly::makeUnexpected(Error());
   }
