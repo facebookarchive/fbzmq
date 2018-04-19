@@ -126,7 +126,7 @@ Message::empty() const noexcept {
 
 folly::Expected<int, Error>
 Message::getProperty(int property) const noexcept {
-  const int value = zmq_msg_get(&msg_, property);
+  const int value = zmq_msg_get(const_cast<zmq_msg_t*>(&msg_), property);
   if (value == -1) {
     return folly::makeUnexpected(Error());
   }
