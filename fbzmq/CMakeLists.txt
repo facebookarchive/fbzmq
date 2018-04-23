@@ -73,9 +73,9 @@ if (BUILD_SHARED_LIBS)
 endif()
 
 target_link_libraries(fbzmq
-  ${DOUBLECONV}
   ${ZSTD}
   ${FOLLY}
+  ${DOUBLECONV}
   ${GFLAGS}
   ${GLOG}
   ${ZMQ}
@@ -84,6 +84,7 @@ target_link_libraries(fbzmq
   ${THRIFTPROTOCOL}
   ${PROTOCOL}
   ${TRANSPORT}
+  -ldl
 )
 
 install(TARGETS
