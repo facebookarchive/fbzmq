@@ -1,9 +1,8 @@
 #
-# Copyright 2014-present, Facebook, Inc.
-# All rights reserved.
+# Copyright (c) 2014-present, Facebook, Inc.
 #
-# This source code is licensed under the license found in the
-# LICENSE-examples file in the root directory of this source tree.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 #
 
 from __future__ import absolute_import
@@ -55,5 +54,5 @@ setup(
     author_email='openr@fb.com',
     description='Python bindings for fbzmq thrift definitions',
     packages=create_package_list('fbzmq'),
-    license='BSD',
+    license='MIT',
 )

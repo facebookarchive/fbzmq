@@ -145,4 +145,4 @@ our code is very well documented and refer to appropriate header files for up to
 date and detailed documentation of various APIs/functionalities.
 
 ## License
-fbzmq is BSD-licensed. We also provide an additional patent grant.
+fbzmq is MIT-licensed.
