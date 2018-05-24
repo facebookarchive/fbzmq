@@ -330,7 +330,7 @@ TEST(Socket, ThriftSerDeser) {
   // The wrapper we use to store something in KV database
   fbzmq::test::WrapperValue wrapperVal;
   wrapperVal.version = 1000;
-  wrapperVal.value = std::move(rawClientVal);
+  wrapperVal.value = *rawClientVal;
 
   auto rawWrapperVal = fbzmq::util::writeThriftObj(wrapperVal, serializer);
   auto newWrapperVal = fbzmq::util::readThriftObj<fbzmq::test::WrapperValue>(
@@ -338,9 +338,8 @@ TEST(Socket, ThriftSerDeser) {
 
   EXPECT_EQ(newWrapperVal.version, 1000);
 
-  auto newRawClientVal = std::move(newWrapperVal.value);
   auto newClientVal = fbzmq::util::readThriftObj<fbzmq::test::TestValue>(
-      *(newRawClientVal.get()), serializer);
+      newWrapperVal.value, serializer);
 
   EXPECT_EQ(newClientVal.value, "test1234");
 }

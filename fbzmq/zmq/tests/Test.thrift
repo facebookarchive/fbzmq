@@ -10,7 +10,7 @@ namespace cpp2 fbzmq.test
 cpp_include "folly/io/IOBuf.h"
 
 // we'll use raw IOBuf to pass our serialized thrift data
-typedef binary (cpp2.type = "std::unique_ptr<folly::IOBuf>") IOBufPtr
+typedef binary (cpp2.type = "folly::IOBuf") IOBuf
 
 // we'll be writing this structure into KV store
 struct TestValue {
@@ -21,5 +21,5 @@ struct TestValue {
 struct WrapperValue {
   1: i64 version;
   // the use of move-only object makes Value non-copyable
-  2: IOBufPtr value;
+  2: IOBuf value;
 }
