@@ -241,8 +241,8 @@ apt-get install libdouble-conversion-dev \
   python3-setuptools \
   python-pip
 
-install_glog
 install_gflags
+install_glog # Requires gflags to be build first
 install_gtest
 install_mstch
 install_zstd
