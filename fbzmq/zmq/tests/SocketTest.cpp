@@ -102,12 +102,10 @@ TEST(Socket, RecvNonBlocking) {
   rep3.unbind(fbzmq::SocketUrl{"inproc://test_basic_stuff"}).value();
 }
 
-TEST(Socket, BindUndind) {
+TEST(Socket, BindUnbind) {
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub(ctx);
-  pub.bind(fbzmq::SocketUrl{"ipc://test"}).value();
   pub.bind(fbzmq::SocketUrl{"inproc://test"}).value();
-  pub.unbind(fbzmq::SocketUrl{"ipc://test"}).value();
   pub.unbind(fbzmq::SocketUrl{"inproc://test"}).value();
 }
 
