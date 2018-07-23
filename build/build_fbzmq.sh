@@ -47,7 +47,7 @@ install_sigar() {
   cd sigar
   sudo yum install libtool
   ./autogen.sh
-  ./configure --disable-shared CFLGAS='-fgnu89-inline'
+  ./configure --disable-shared CFLAGS='-fgnu89-inline'
   sudo make install
   sudo ldconfig
   popd
