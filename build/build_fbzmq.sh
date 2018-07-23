@@ -39,6 +39,20 @@ install_glog() {
   popd
 }
 
+install_sigar() {
+  pushd .
+  if [[ ! -e "sigar" ]]; then
+    git clone https://github.com/hyperic/sigar/
+  fi
+  cd sigar
+  sudo yum install libtool
+  ./autogen.sh
+  ./configure --disable-shared CFLGAS='-fgnu89-inline'
+  sudo make install
+  sudo ldconfig
+  popd
+}
+
 install_gflags() {
   pushd .
   if [[ ! -e "gflags" ]]; then
@@ -241,6 +255,7 @@ apt-get install libdouble-conversion-dev \
   python3-setuptools \
   python-pip
 
+install_sigar
 install_gflags
 install_glog # Requires gflags to be build first
 install_gtest

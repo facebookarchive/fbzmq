@@ -17,13 +17,14 @@ import specs.fbthrift as fbthrift
 import specs.folly as folly
 import specs.fbzmq as fbzmq
 import specs.gmock as gmock
+import specs.sigar as sigar
 
 from shell_quoting import ShellQuoted
 
 
 def fbcode_builder_spec(builder):
     return {
-        'depends_on': [folly, fbthrift, gmock, fbzmq],
+        'depends_on': [folly, fbthrift, gmock, sigar, fbzmq],
         'steps': [
             # fbzmq build dir will be the last workdir
             builder.step('Run fbzmq tests', [

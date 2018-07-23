@@ -23,6 +23,7 @@ find_library(GLOG glog)
 find_library(PTHREAD pthread)
 find_library(SODIUM sodium)
 find_library(ZMQ zmq)
+find_library(SIGAR sigar)
 
 # Facebook specific libraries
 find_library(FOLLY folly PATHS)
@@ -65,6 +66,7 @@ add_library(fbzmq
   async/ZmqTimeout.cpp
   service/logging/LogSample.cpp
   service/monitor/ZmqMonitorClient.cpp
+  service/resource-monitor/ResourceMonitor.cpp
   service/stats/ExportedStat.cpp
   service/stats/ThreadData.cpp
   zmq/Common.cpp
@@ -91,6 +93,7 @@ target_link_libraries(fbzmq
   ${THRIFTPROTOCOL}
   ${PROTOCOL}
   ${TRANSPORT}
+  ${SIGAR}
   -ldl
 )
 
@@ -128,6 +131,11 @@ install(FILES
   service/monitor/ZmqMonitor.h
   service/monitor/ZmqMonitorClient.h
   DESTINATION include/fbzmq/service/monitor
+)
+
+install(FILES
+  service/resource-monitor/ResourceMonitor.h
+  DESTINATION include/fbzmq/service/resource-monitor
 )
 
 install(FILES
@@ -226,6 +234,9 @@ if (BUILD_TESTS)
   add_executable(zmq_monitor_client_test
     service/monitor/tests/ZmqMonitorClientTest.cpp
   )
+  add_executable(resource_monitor_test
+    zmq/tests/ResourceMonitorTest.cpp
+  )
   add_executable(zmq_monitor_sample
     service/monitor/ZmqMonitorSample.cpp
   )
@@ -306,6 +317,11 @@ if (BUILD_TESTS)
     ${GTEST}
     ${GTEST_MAIN}
   )
+  target_link_libraries(resource_monitor_test
+    fbzmq
+    ${GTEST}
+    ${GTEST_MAIN}
+  )
   target_link_libraries(zmq_monitor_sample
     fbzmq
   )
@@ -331,5 +347,6 @@ if (BUILD_TESTS)
   add_test(ThreadDataTest thread_data_test)
   add_test(ZmqMonitorTest zmq_monitor_test)
   add_test(ZmqMonitorClientTest zmq_monitor_client_test)
+  add_test(ResourceMonitorTest resource_monitor_test)
 
 endif()

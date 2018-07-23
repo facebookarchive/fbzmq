@@ -79,7 +79,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
 
   std::set<std::string> s(
       thriftNamesRep.counterNames.begin(), thriftNamesRep.counterNames.end());
-  EXPECT_EQ(std::set<std::string>({"bar", "foo"}), s);
+  EXPECT_EQ(std::set<std::string>({"bar", "foo",
+      "process.cpu.pct", "process.memory.rss"}), s);
 
   thriftReq.cmd = thrift::MonitorCommand::GET_COUNTER_VALUES;
   thriftReq.counterGetParams.counterNames = {"bar", "foo"};
@@ -169,7 +170,7 @@ TEST(ZmqMonitorTest, BasicOperation) {
   LOG(INFO) << "got all counters dumped from dealer sock...";
 
   auto& keyValueMap = thriftNameValuesRep.counters;
-  EXPECT_EQ(3, keyValueMap.size());
+  EXPECT_EQ(5, keyValueMap.size());
   EXPECT_EQ(1234, keyValueMap["bar"].value);
   EXPECT_EQ(5678, keyValueMap["foo"].value);
   EXPECT_EQ(9012, keyValueMap["foobar"].value);
@@ -187,7 +188,7 @@ TEST(ZmqMonitorTest, BasicOperation) {
   LOG(INFO) << "got all counters dumped from dealer sock...";
 
   keyValueMap = thriftNameValuesRep.counters;
-  EXPECT_EQ(4, keyValueMap.size());
+  EXPECT_EQ(6, keyValueMap.size());
   // bumped existing counter
   EXPECT_EQ(1235, keyValueMap["bar"].value);
   EXPECT_EQ(5679, keyValueMap["foo"].value);
@@ -204,7 +205,7 @@ TEST(ZmqMonitorTest, BasicOperation) {
   thriftNamesRep =
       dealer.recvThriftObj<thrift::CounterNamesResponse>(serializer).value();
   LOG(INFO) << "got counter names...";
-  EXPECT_TRUE(thriftNamesRep.counterNames.empty());
+  EXPECT_EQ(thriftNamesRep.counterNames.size(), 2);
 
   // publish some logs
   thriftReq.cmd = thrift::MonitorCommand::LOG_EVENT;

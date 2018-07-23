@@ -14,6 +14,7 @@
 #include <fbzmq/async/ZmqTimeout.h>
 #include <fbzmq/service/if/gen-cpp2/Monitor_types.h>
 #include <fbzmq/service/logging/LogSample.h>
+#include <fbzmq/service/resource-monitor/ResourceMonitor.h>
 #include <fbzmq/zmq/Zmq.h>
 #include <folly/gen/Base.h>
 #include <folly/Optional.h>
@@ -32,6 +33,7 @@ using CounterTimestampMap = std::unordered_map<
         std::chrono::time_point<
             std::chrono::steady_clock> /* last update ts*/>>;
 const std::chrono::seconds kAlivenessCheckInterval{180};
+const std::chrono::seconds kProfilingStatInterval{5};
 const size_t kMaxLogEvents{100};
 
 class ZmqMonitor final : public ZmqEventLoop {
@@ -43,7 +45,9 @@ class ZmqMonitor final : public ZmqEventLoop {
       const folly::Optional<LogSample>& logSampleToMerge = folly::none,
       const std::chrono::seconds alivenessCheckInterval =
           kAlivenessCheckInterval,
-      const size_t maxLogEvents = kMaxLogEvents)
+      const size_t maxLogEvents = kMaxLogEvents,
+      const std::chrono::seconds profilingStatInterval =
+          kProfilingStatInterval)
       : monitorSubmitUrl_(monitorSubmitUrl),
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
@@ -56,6 +60,11 @@ class ZmqMonitor final : public ZmqEventLoop {
     monitorTimer_ = fbzmq::ZmqTimeout::make(
         this, [this]() noexcept { purgeStaleCounters(); });
     monitorTimer_->scheduleTimeout(alivenessCheckInterval_, isPeriodic);
+    updateMemStat();
+    updateCpuStat();
+    profilingTimer_ = fbzmq::ZmqTimeout::make(
+        this, [this]() noexcept { updateResourceStats(); });
+    profilingTimer_->scheduleTimeout(profilingStatInterval, isPeriodic);
 
     // Prepare router socket to talk to Broker/other processes
     const int handover = 1;
@@ -113,6 +122,43 @@ class ZmqMonitor final : public ZmqEventLoop {
   ZmqMonitor(ZmqMonitor const&) = delete;
   ZmqMonitor& operator=(ZmqMonitor const&) = delete;
   std::list<thrift::EventLog> eventLogs_;
+
+  // update stats from within ZmqMonitor
+  void updateResourceStats() {
+    runImmediatelyOrInEventLoop([&]() {
+      updateMemStat();
+      updateCpuStat();
+    });
+  }
+
+  // update memory stat
+  void updateMemStat() {
+      std::string key{"process.memory.rss"};
+      auto rssMem =  resourceMonitor_.getRSSMemBytes();
+      if (rssMem.hasValue()) {
+        auto now = std::chrono::system_clock::now();
+        counters_[key].first.value = static_cast<double>(rssMem.value());
+        counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
+        counters_[key].first.timestamp =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+        counters_[key].second = std::chrono::steady_clock::now();
+      }
+  }
+  // update cpu stat
+  void updateCpuStat() {
+      std::string key{"process.cpu.pct"};
+      auto cpuPct =  resourceMonitor_.getCPUpercentage();
+      if (cpuPct.hasValue()) {
+        auto now = std::chrono::system_clock::now();
+        counters_[key].first.value = static_cast<double>(cpuPct.value());
+        counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
+        counters_[key].first.timestamp =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+        counters_[key].second = std::chrono::steady_clock::now();
+      }
+  }
 
   // process a monitor request pending oni monitorReceiveSock_
   void
@@ -274,6 +320,7 @@ class ZmqMonitor final : public ZmqEventLoop {
   // Timer for checking counter aliveness periodically
   std::unique_ptr<ZmqTimeout> monitorTimer_;
 
+  std::unique_ptr<ZmqTimeout> profilingTimer_;
   const std::string monitorSubmitUrl_;
   const std::string monitorPubUrl_;
 
@@ -294,6 +341,9 @@ class ZmqMonitor final : public ZmqEventLoop {
 
   // LogSample to merge to each LogSample we recv
   const folly::Optional<LogSample> logSampleToMerge_;
+
+  // resource monitor
+  fbzmq::ResourceMonitor resourceMonitor_{};
 };
 
 } // namespace fbzmq
