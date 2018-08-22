@@ -27,6 +27,7 @@ find_library(SIGAR sigar)
 
 # Facebook specific libraries
 find_library(FOLLY folly PATHS)
+find_library(FIZZ fizz PATHS)
 find_library(ZSTD zstd)
 
 # Include Thrift

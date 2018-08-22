@@ -118,6 +118,27 @@ install_mstch() {
   popd
 }
 
+install_fizz() {
+  pushd .
+  if [[ ! -e "fizz" ]]; then
+    git clone https://github.com/facebookincubator/fizz
+  fi
+  rev=$(find_github_hash facebookincubator/fizz)
+  cd fizz/fizz
+  if [[ ! -z "$rev" ]]; then
+    git fetch origin
+    git checkout "$rev"
+  fi
+  cmake \
+    -DFOLLY_INCLUDE_DIR=$DESTDIR/usr/local/include \
+    -DFOLLY_LIBRARY=$DESTDIR/usr/local/lib \
+    -DBUILD_TESTS=OFF .
+  make
+  make install
+  ldconfig
+  popd
+}
+
 install_wangle() {
   pushd .
   if [[ ! -e "wangle" ]]; then
@@ -262,6 +283,7 @@ install_gtest
 install_mstch
 install_zstd
 install_folly
+install_fizz
 install_wangle
 install_libsodium
 install_libzmq
