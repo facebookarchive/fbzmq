@@ -6,6 +6,9 @@
  */
 
 #include <syslog.h>
+#include <boost/filesystem.hpp>
+
+#include <folly/Format.h>
 
 #include "ResourceMonitor.h"
 
@@ -26,6 +29,10 @@ ResourceMonitor::~ResourceMonitor() noexcept {
 
 int ResourceMonitor::initSigar() {
   int sigarStatus = SIGAR_OK;
+  // return if /proc/<pid> doest not exist (e.g. rootfs)
+  if (!boost::filesystem::exists(folly::sformat("/proc/{}", pid_))) {
+    return sigarStatus;
+  }
   if ((sigarStatus = sigar_open(&sigar_)) != SIGAR_OK) {
       LOG(ERROR) << "sigar_open failed with code " << sigarStatus;
   }
@@ -36,6 +43,10 @@ folly::Optional<uint64_t>
 ResourceMonitor::getRSSMemBytes() const {
   int sigarStatus = SIGAR_OK;
   sigar_proc_mem_t mem;
+
+  if (!sigar_) {
+   return folly::none;
+  }
 
   if ((sigarStatus = sigar_proc_mem_get(sigar_, pid_, &mem)) != SIGAR_OK) {
     LOG(ERROR) << "sigar_proc_mem_get failed with code " << sigarStatus;
@@ -48,6 +59,10 @@ folly::Optional<float>
 ResourceMonitor::getCPUpercentage() const {
   int sigarStatus = SIGAR_OK;
   sigar_proc_cpu_t cpu;
+
+  if (!sigar_) {
+   return folly::none;
+  }
 
   if ((sigarStatus = sigar_proc_cpu_get(sigar_, pid_, &cpu)) != SIGAR_OK) {
     LOG(ERROR) << "sigar_proc_cpu_get failed with code " << sigarStatus;
