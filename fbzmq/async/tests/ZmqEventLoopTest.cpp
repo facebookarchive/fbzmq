@@ -192,7 +192,7 @@ TEST(ZmqEventLoopTest, CopyCapture) {
   auto const& now = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::system_clock::now().time_since_epoch());
 
-  auto callback = std::function<void() noexcept>([&]() noexcept {
+  auto callback = std::function<void()>([&]() noexcept {
     SUCCEED();
     evl.stop();
   });
@@ -249,7 +249,7 @@ TEST(ZmqEventLoopTest, RunImmediatelyOrInEventLoopApi) {
 
   int counter = 0;
   auto incrementCb =
-      std::function<void() noexcept>([&]() noexcept { counter++; });
+      std::function<void()>([&]() noexcept { counter++; });
 
   // Case-1: Thread is not running
   evl.runImmediatelyOrInEventLoop(incrementCb);
@@ -386,7 +386,7 @@ TEST(ZmqEventLoopTest, veriyHealthCheckDuration) {
   Context context;
   ZmqEventLoop evl(1e4, std::chrono::seconds(1));
 
-  auto callback = std::function<void() noexcept>([&]() noexcept {
+  auto callback = std::function<void()>([&]() noexcept {
     // Verify that even timeout is scheduled far later, evl gets
     // lastestActivityTs_ updated every healthCheckDuration
     auto now = std::chrono::duration_cast<std::chrono::seconds>(
