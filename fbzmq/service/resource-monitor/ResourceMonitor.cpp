@@ -68,7 +68,7 @@ ResourceMonitor::getCPUpercentage() const {
     LOG(ERROR) << "sigar_proc_cpu_get failed with code " << sigarStatus;
     return folly::none;
   }
-  return cpu.percent;
+  return cpu.percent * 100;
 }
 
 } // namespace fbzmq
