@@ -176,7 +176,7 @@ class SocketImpl {
     }
     // if the first message arrives, the rest shall have arrived, so no timeout
     return recvMultipleTimeout(
-        folly::Optional<std::chrono::milliseconds>(0), msgs...);
+        folly::Optional<std::chrono::milliseconds>{}, msgs...);
   }
 
   /**
