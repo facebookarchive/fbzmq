@@ -52,6 +52,14 @@ class ZmqThrottle final : private ZmqTimeout {
     return isScheduled();
   }
 
+  /**
+   * Cancel scheduled throttle
+   */
+  void
+  cancel() {
+    cancelTimeout();
+  }
+
  private:
   /**
    * Overrides ZmqTimeout's timeout callback

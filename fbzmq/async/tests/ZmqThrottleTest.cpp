@@ -56,8 +56,25 @@ TEST(ZmqThrottleTest, ThrottleTest) {
     evl.scheduleTimeout(chrono::milliseconds(90), callbackFn);
     EXPECT_FALSE(throttledFn.isActive());
 
-    // Schedule stop at the end
+    // Validate count
     evl.scheduleTimeout(chrono::milliseconds(200), [&]() noexcept {
+      EXPECT_EQ(2, count); // Count must be 2
+    });
+
+    // Below shouldn't lead to any increment
+    evl.scheduleTimeout(chrono::milliseconds(210), [&]() noexcept {
+      EXPECT_FALSE(throttledFn.isActive());
+      throttledFn();
+      EXPECT_TRUE(throttledFn.isActive());
+    });
+    evl.scheduleTimeout(chrono::milliseconds(220), [&]() noexcept {
+      EXPECT_TRUE(throttledFn.isActive());
+      throttledFn.cancel();
+      EXPECT_FALSE(throttledFn.isActive());
+    });
+
+    // Schedule stop and validate final coun
+    evl.scheduleTimeout(chrono::milliseconds(400), [&]() noexcept {
       EXPECT_EQ(2, count); // Count must be 2
       evl.stop();
     });
