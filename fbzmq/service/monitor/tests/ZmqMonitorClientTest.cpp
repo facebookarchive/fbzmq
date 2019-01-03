@@ -71,12 +71,12 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   LOG(INFO) << "got counter names...";
   std::set<std::string> s(counterNames.begin(), counterNames.end());
   EXPECT_EQ(std::set<std::string>({"bar", "foo",
-      "process.cpu.pct", "process.memory.rss"}), s);
+      "process.cpu.pct", "process.memory.rss", "process.uptime.seconds"}), s);
 
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(4, counters.size());
+  EXPECT_EQ(5, counters.size());
   EXPECT_EQ(1234, counters["bar"].value);
   EXPECT_EQ(5678, counters["foo"].value);
 
@@ -154,7 +154,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(5, counters.size());
+  EXPECT_EQ(6, counters.size());
   EXPECT_EQ(1234, counters["bar"].value);
   EXPECT_EQ(5678, counters["foo"].value);
   EXPECT_EQ(9012, counters["foobar"].value);
@@ -167,7 +167,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(6, counters.size());
+  EXPECT_EQ(7, counters.size());
   // bumped existing counter
   EXPECT_EQ(1235, counters["bar"].value);
   // unbumped existing counter

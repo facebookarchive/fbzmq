@@ -30,8 +30,8 @@ using CounterTimestampMap = std::unordered_map<
     std::string /* counter name */,
     std::pair<
         thrift::Counter /* counter value */,
-        std::chrono::time_point<
-            std::chrono::steady_clock> /* last update ts*/>>;
+        std::chrono::steady_clock::time_point /* last update ts */ >>;
+const std::string kUptimeCounter{"process.uptime.seconds"};
 const std::chrono::seconds kAlivenessCheckInterval{180};
 const std::chrono::seconds kProfilingStatInterval{5};
 const size_t kMaxLogEvents{100};
@@ -52,6 +52,7 @@ class ZmqMonitor final : public ZmqEventLoop {
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
         monitorPubSock_{zmqContext},
+        startTime_{std::chrono::steady_clock::now()},
         alivenessCheckInterval_{alivenessCheckInterval},
         maxLogEvents_{maxLogEvents},
         logSampleToMerge_{logSampleToMerge} {
@@ -189,10 +190,24 @@ class ZmqMonitor final : public ZmqEventLoop {
     }
 
     const auto thriftReq = maybeThriftReq.value();
+    const auto now = std::chrono::steady_clock::now();
+
+    // Always update uptime counter counter
+    counters_[kUptimeCounter] = std::make_pair(
+        thrift::Counter(
+            apache::thrift::FRAGILE,
+            std::chrono::duration_cast<std::chrono::seconds>(
+                now - startTime_
+            ).count(),
+            thrift::CounterValueType::COUNTER,
+            std::chrono::duration_cast<std::chrono::microseconds>(
+              now.time_since_epoch()
+            ).count()
+        ),
+        now);
 
     switch (thriftReq.cmd) {
     case thrift::MonitorCommand::SET_COUNTER_VALUES:{
-      auto now = std::chrono::steady_clock::now();
       for (auto const& kv : thriftReq.counterSetParams.counters) {
         counters_[kv.first].first = kv.second;
         counters_[kv.first].second = now;
@@ -234,7 +249,6 @@ class ZmqMonitor final : public ZmqEventLoop {
       break;
 
     case thrift::MonitorCommand::BUMP_COUNTER: {
-      auto now = std::chrono::steady_clock::now();
       for (auto const& name : thriftReq.counterBumpParams.counterNames) {
         if (counters_.find(name) == counters_.end()) {
           thrift::Counter counter(
@@ -332,6 +346,9 @@ class ZmqMonitor final : public ZmqEventLoop {
 
   // track critical statistics, e.g., number of times functions are called
   CounterTimestampMap counters_;
+
+  // Start timestamp
+  const std::chrono::steady_clock::time_point startTime_;
 
   // time interval of counter aliveness check
   const std::chrono::seconds alivenessCheckInterval_;
