@@ -71,7 +71,7 @@ class ZmqEventLoop : public Runnable {
    * mechanism monitoring on lastestActivityTs_
    */
   explicit ZmqEventLoop(
-    uint64_t queueCapacity = 1e4,
+    uint64_t queueCapacity = 1e2,
     std::chrono::seconds healthCheckDuration = std::chrono::seconds(30));
 
   ~ZmqEventLoop() override;
@@ -235,6 +235,13 @@ class ZmqEventLoop : public Runnable {
      return lastestActivityTs_;
    }
 
+   /**
+   * return zmq event callback queue size
+   */
+   size_t getEventQueueSize() const {
+     return callbackQueue_.allocatedCapacity();
+   }
+
  private:
   /**
    * Utility struct to store information about poll-item and its callback
@@ -299,7 +306,7 @@ class ZmqEventLoop : public Runnable {
   int callbackFd_{-1};
 
   // Queue to hold externally enqueued events.
-  folly::MPMCQueue<TimeoutCallback> callbackQueue_;
+  folly::MPMCQueue<TimeoutCallback, std::atomic, true> callbackQueue_;
 
   // thread-id associated with `run` loop (default value is 0). `threadId_` is
   // also being used to indicate whether a main loop is running or not
