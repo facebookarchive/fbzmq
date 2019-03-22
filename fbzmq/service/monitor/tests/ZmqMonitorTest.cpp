@@ -38,7 +38,6 @@ TEST(ZmqMonitorTest, BasicOperation) {
       sampleToMerge,
       std::chrono::seconds(2));
 
-
   auto monitorThread = std::make_unique<std::thread>([monitor]() {
     LOG(INFO) << "ZmqMonitor thread starting";
     monitor->run();
@@ -79,8 +78,13 @@ TEST(ZmqMonitorTest, BasicOperation) {
 
   std::set<std::string> s(
       thriftNamesRep.counterNames.begin(), thriftNamesRep.counterNames.end());
-  EXPECT_EQ(std::set<std::string>({"bar", "foo",
-      "process.cpu.pct", "process.memory.rss", "process.uptime.seconds"}), s);
+  EXPECT_EQ(
+      std::set<std::string>({"bar",
+                             "foo",
+                             "process.cpu.pct",
+                             "process.memory.rss",
+                             "process.uptime.seconds"}),
+      s);
 
   thriftReq.cmd = thrift::MonitorCommand::GET_COUNTER_VALUES;
   thriftReq.counterGetParams.counterNames = {"bar", "foo"};

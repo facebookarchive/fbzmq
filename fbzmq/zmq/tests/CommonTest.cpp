@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <thread>
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
+#include <thread>
 
 #include <fbzmq/zmq/Common.h>
 #include <fbzmq/zmq/Context.h>
@@ -40,16 +40,14 @@ TEST(ZmqProxy, EmptyProxy) {
     frontend.bind(fbzmq::SocketUrl{"tcp://*:5555"});
     backend.connect(fbzmq::SocketUrl{"tcp://*:5556"});
     fbzmq::proxy(
-      reinterpret_cast<void*>(*frontend),
-      reinterpret_cast<void*>(*backend),
-      nullptr);
+        reinterpret_cast<void*>(*frontend),
+        reinterpret_cast<void*>(*backend),
+        nullptr);
     proxyExit = true;
   });
 
-
   proxyThread.join();
   EXPECT_TRUE(proxyExit);
-
 }
 
 } // namespace fbzmq

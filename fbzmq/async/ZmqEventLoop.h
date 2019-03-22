@@ -71,8 +71,8 @@ class ZmqEventLoop : public Runnable {
    * mechanism monitoring on lastestActivityTs_
    */
   explicit ZmqEventLoop(
-    uint64_t queueCapacity = 1e2,
-    std::chrono::seconds healthCheckDuration = std::chrono::seconds(30));
+      uint64_t queueCapacity = 1e2,
+      std::chrono::seconds healthCheckDuration = std::chrono::seconds(30));
 
   ~ZmqEventLoop() override;
 
@@ -230,17 +230,18 @@ class ZmqEventLoop : public Runnable {
    * This helps in exposing health condition of current thread to monitoring
    * mechanism.
    */
-   std::chrono::seconds
-   getTimestamp() const {
-     return lastestActivityTs_;
-   }
+  std::chrono::seconds
+  getTimestamp() const {
+    return lastestActivityTs_;
+  }
 
-   /**
+  /**
    * return zmq event callback queue size
    */
-   size_t getEventQueueSize() const {
-     return callbackQueue_.allocatedCapacity();
-   }
+  size_t
+  getEventQueueSize() const {
+    return callbackQueue_.allocatedCapacity();
+  }
 
  private:
   /**

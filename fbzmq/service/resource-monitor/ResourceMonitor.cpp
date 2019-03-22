@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <syslog.h>
 #include <boost/filesystem.hpp>
+#include <syslog.h>
 
 #include <folly/Format.h>
 
@@ -27,14 +27,15 @@ ResourceMonitor::~ResourceMonitor() noexcept {
   }
 }
 
-int ResourceMonitor::initSigar() {
+int
+ResourceMonitor::initSigar() {
   int sigarStatus = SIGAR_OK;
   // return if /proc/<pid> doest not exist (e.g. rootfs)
   if (!boost::filesystem::exists(folly::sformat("/proc/{}", pid_))) {
     return sigarStatus;
   }
   if ((sigarStatus = sigar_open(&sigar_)) != SIGAR_OK) {
-      LOG(ERROR) << "sigar_open failed with code " << sigarStatus;
+    LOG(ERROR) << "sigar_open failed with code " << sigarStatus;
   }
   return sigarStatus;
 }
@@ -45,7 +46,7 @@ ResourceMonitor::getRSSMemBytes() const {
   sigar_proc_mem_t mem;
 
   if (!sigar_) {
-   return folly::none;
+    return folly::none;
   }
 
   if ((sigarStatus = sigar_proc_mem_get(sigar_, pid_, &mem)) != SIGAR_OK) {
@@ -61,7 +62,7 @@ ResourceMonitor::getCPUpercentage() const {
   sigar_proc_cpu_t cpu;
 
   if (!sigar_) {
-   return folly::none;
+    return folly::none;
   }
 
   if ((sigarStatus = sigar_proc_cpu_get(sigar_, pid_, &cpu)) != SIGAR_OK) {

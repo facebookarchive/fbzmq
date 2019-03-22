@@ -34,25 +34,24 @@ LogSample::LogSample(std::chrono::system_clock::time_point timestamp)
   json_ = folly::dynamic::object;
 
   // add the timestamp to the json sample
-  addInt(kTimeCol, std::chrono::duration_cast<std::chrono::seconds>(
-    timestamp_.time_since_epoch()).count());
+  addInt(
+      kTimeCol,
+      std::chrono::duration_cast<std::chrono::seconds>(
+          timestamp_.time_since_epoch())
+          .count());
 }
 
 LogSample::LogSample(
-  folly::dynamic json,
-  std::chrono::system_clock::time_point timestamp)
-    : json_(json),
-      timestamp_(timestamp) {
-
-}
+    folly::dynamic json, std::chrono::system_clock::time_point timestamp)
+    : json_(json), timestamp_(timestamp) {}
 
 LogSample
 LogSample::fromJson(const std::string& json) {
-    auto dynamic = folly::parseJson(json);
-    // will throw if this sample doesn't have a timestamp
-    auto timestamp = std::chrono::system_clock::time_point(
+  auto dynamic = folly::parseJson(json);
+  // will throw if this sample doesn't have a timestamp
+  auto timestamp = std::chrono::system_clock::time_point(
       std::chrono::seconds(dynamic[INT_KEY][kTimeCol].getInt()));
-    return LogSample(dynamic, timestamp);
+  return LogSample(dynamic, timestamp);
 }
 
 std::string
@@ -65,7 +64,7 @@ LogSample::toJson() const {
 void
 LogSample::mergeSample(const LogSample& sample) {
   auto dynamic = folly::parseJson(sample.toJson());
-  for(auto& kv : json_.items()) {
+  for (auto& kv : json_.items()) {
     const auto& search = dynamic.find(kv.first);
     if (search != dynamic.items().end()) {
       kv.second.update_missing(search->second);

@@ -9,11 +9,9 @@
 
 namespace fbzmq {
 
-Error::Error()
-    : errNum(zmq_errno()), errString(zmq_strerror(errNum)) {}
+Error::Error() : errNum(zmq_errno()), errString(zmq_strerror(errNum)) {}
 
-Error::Error(int errNum)
-    : errNum(errNum), errString(zmq_strerror(errNum)) {}
+Error::Error(int errNum) : errNum(errNum), errString(zmq_strerror(errNum)) {}
 
 Error::Error(int errNum, std::string errString)
     : errNum(errNum), errString(errString) {}
@@ -46,8 +44,8 @@ poll(
   return poll(items.data(), items.size(), timeout ? timeout->count() : -1);
 }
 
-folly::Expected<folly::Unit, Error> proxy(
-    void *frontend, void *backend, void *capture) {
+folly::Expected<folly::Unit, Error>
+proxy(void* frontend, void* backend, void* capture) {
   while (true) {
     auto rc = zmq_proxy(frontend, backend, capture);
     if (rc == 0) {

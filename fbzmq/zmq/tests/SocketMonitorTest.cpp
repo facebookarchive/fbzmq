@@ -8,9 +8,9 @@
 #include <thread>
 
 #include <folly/Format.h>
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
 #include <fbzmq/zmq/SocketMonitor.h>
 
@@ -101,7 +101,8 @@ TEST(SocketMonitor, AcceptSync) {
   std::thread t([kServerUrl, &isRunning, &isBound, &server, &messages] {
     // invoke this callback for monitoring messages
     fbzmq::SocketMonitor::CallbackT f = [kServerUrl, &messages, &isBound](
-        fbzmq::SocketMonitorMessage msg, fbzmq::SocketUrl url) {
+                                            fbzmq::SocketMonitorMessage msg,
+                                            fbzmq::SocketUrl url) {
       LOG(INFO) << static_cast<int>(msg) << " : "
                 << static_cast<std::string>(url);
       if (msg == fbzmq::SocketMonitorMessage::ACCEPTED) {
@@ -152,7 +153,8 @@ TEST(SocketMonitor, ConnectAsync) {
 
   // the callback to call on evenry message
   fbzmq::SocketMonitor::CallbackT f = [kServerUrl, &messages](
-      fbzmq::SocketMonitorMessage msg, fbzmq::SocketUrl url) {
+                                          fbzmq::SocketMonitorMessage msg,
+                                          fbzmq::SocketUrl url) {
     LOG(INFO) << static_cast<int>(msg) << " : "
               << static_cast<std::string>(url);
     messages.insert(msg);

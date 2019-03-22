@@ -7,8 +7,8 @@
 
 #include <folly/Memory.h>
 #include <folly/system/ThreadName.h>
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 #include <fbzmq/async/ZmqEventLoop.h>
 #include <fbzmq/zmq/Zmq.h>
@@ -248,8 +248,7 @@ TEST(ZmqEventLoopTest, RunImmediatelyOrInEventLoopApi) {
   ZmqEventLoop evl(10);
 
   int counter = 0;
-  auto incrementCb =
-      std::function<void()>([&]() noexcept { counter++; });
+  auto incrementCb = std::function<void()>([&]() noexcept { counter++; });
 
   // Case-1: Thread is not running
   evl.runImmediatelyOrInEventLoop(incrementCb);

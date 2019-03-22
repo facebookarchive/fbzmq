@@ -61,7 +61,7 @@ folly::Expected<int, Error> poll(
  * Depending on the socket types, replies may flow in the opposite direction.
  */
 folly::Expected<folly::Unit, Error> proxy(
-    void *frontend, void *backend, void *capture);
+    void* frontend, void* backend, void* capture);
 
 namespace util {
 

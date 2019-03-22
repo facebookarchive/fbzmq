@@ -53,8 +53,7 @@ class LogSample {
   explicit LogSample(std::chrono::system_clock::time_point timestamp);
 
   LogSample(
-    folly::dynamic json,
-    std::chrono::system_clock::time_point timestamp);
+      folly::dynamic json, std::chrono::system_clock::time_point timestamp);
 
   static LogSample fromJson(const std::string& json);
 

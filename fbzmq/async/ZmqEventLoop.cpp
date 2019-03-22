@@ -19,12 +19,11 @@
 namespace fbzmq {
 
 ZmqEventLoop::ZmqEventLoop(
-  uint64_t queueCapacity,
-  std::chrono::seconds healthCheckDuration)
+    uint64_t queueCapacity, std::chrono::seconds healthCheckDuration)
     : callbackQueue_(queueCapacity),
       healthCheckDuration_(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-          healthCheckDuration)) {
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              healthCheckDuration)) {
   // update aliveness timestamp
   lastestActivityTs_.store(std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::system_clock::now().time_since_epoch()));

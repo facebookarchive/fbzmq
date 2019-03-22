@@ -10,8 +10,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <gflags/gflags.h>
 #include <fbzmq/service/stats/ThreadData.h>
+#include <gflags/gflags.h>
 
 TEST(ThreadDataTest, ApiTest) {
   fbzmq::ThreadData tData;

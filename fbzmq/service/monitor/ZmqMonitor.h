@@ -16,8 +16,8 @@
 #include <fbzmq/service/logging/LogSample.h>
 #include <fbzmq/service/resource-monitor/ResourceMonitor.h>
 #include <fbzmq/zmq/Zmq.h>
-#include <folly/gen/Base.h>
 #include <folly/Optional.h>
+#include <folly/gen/Base.h>
 #include <thrift/lib/cpp2/Thrift.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -30,7 +30,7 @@ using CounterTimestampMap = std::unordered_map<
     std::string /* counter name */,
     std::pair<
         thrift::Counter /* counter value */,
-        std::chrono::steady_clock::time_point /* last update ts */ >>;
+        std::chrono::steady_clock::time_point /* last update ts */>>;
 const std::string kUptimeCounter{"process.uptime.seconds"};
 const std::chrono::seconds kAlivenessCheckInterval{180};
 const std::chrono::seconds kProfilingStatInterval{5};
@@ -46,8 +46,7 @@ class ZmqMonitor final : public ZmqEventLoop {
       const std::chrono::seconds alivenessCheckInterval =
           kAlivenessCheckInterval,
       const size_t maxLogEvents = kMaxLogEvents,
-      const std::chrono::seconds profilingStatInterval =
-          kProfilingStatInterval)
+      const std::chrono::seconds profilingStatInterval = kProfilingStatInterval)
       : monitorSubmitUrl_(monitorSubmitUrl),
         monitorPubUrl_(monitorPubUrl),
         monitorReceiveSock_{zmqContext},
@@ -125,7 +124,8 @@ class ZmqMonitor final : public ZmqEventLoop {
   std::list<thrift::EventLog> eventLogs_;
 
   // update stats from within ZmqMonitor
-  void updateResourceStats() {
+  void
+  updateResourceStats() {
     runImmediatelyOrInEventLoop([&]() {
       updateMemStat();
       updateCpuStat();
@@ -133,32 +133,36 @@ class ZmqMonitor final : public ZmqEventLoop {
   }
 
   // update memory stat
-  void updateMemStat() {
-      std::string key{"process.memory.rss"};
-      auto rssMem =  resourceMonitor_.getRSSMemBytes();
-      if (rssMem.hasValue()) {
-        auto now = std::chrono::system_clock::now();
-        counters_[key].first.value = static_cast<double>(rssMem.value());
-        counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
-        counters_[key].first.timestamp =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()).count();
-        counters_[key].second = std::chrono::steady_clock::now();
-      }
+  void
+  updateMemStat() {
+    std::string key{"process.memory.rss"};
+    auto rssMem = resourceMonitor_.getRSSMemBytes();
+    if (rssMem.hasValue()) {
+      auto now = std::chrono::system_clock::now();
+      counters_[key].first.value = static_cast<double>(rssMem.value());
+      counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
+      counters_[key].first.timestamp =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              now.time_since_epoch())
+              .count();
+      counters_[key].second = std::chrono::steady_clock::now();
+    }
   }
   // update cpu stat
-  void updateCpuStat() {
-      std::string key{"process.cpu.pct"};
-      auto cpuPct =  resourceMonitor_.getCPUpercentage();
-      if (cpuPct.hasValue()) {
-        auto now = std::chrono::system_clock::now();
-        counters_[key].first.value = static_cast<double>(cpuPct.value());
-        counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
-        counters_[key].first.timestamp =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()).count();
-        counters_[key].second = std::chrono::steady_clock::now();
-      }
+  void
+  updateCpuStat() {
+    std::string key{"process.cpu.pct"};
+    auto cpuPct = resourceMonitor_.getCPUpercentage();
+    if (cpuPct.hasValue()) {
+      auto now = std::chrono::system_clock::now();
+      counters_[key].first.value = static_cast<double>(cpuPct.value());
+      counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
+      counters_[key].first.timestamp =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              now.time_since_epoch())
+              .count();
+      counters_[key].second = std::chrono::steady_clock::now();
+    }
   }
 
   // process a monitor request pending oni monitorReceiveSock_
@@ -196,18 +200,16 @@ class ZmqMonitor final : public ZmqEventLoop {
     counters_[kUptimeCounter] = std::make_pair(
         thrift::Counter(
             apache::thrift::FRAGILE,
-            std::chrono::duration_cast<std::chrono::seconds>(
-                now - startTime_
-            ).count(),
+            std::chrono::duration_cast<std::chrono::seconds>(now - startTime_)
+                .count(),
             thrift::CounterValueType::COUNTER,
             std::chrono::duration_cast<std::chrono::microseconds>(
-              now.time_since_epoch()
-            ).count()
-        ),
+                now.time_since_epoch())
+                .count()),
         now);
 
     switch (thriftReq.cmd) {
-    case thrift::MonitorCommand::SET_COUNTER_VALUES:{
+    case thrift::MonitorCommand::SET_COUNTER_VALUES: {
       for (auto const& kv : thriftReq.counterSetParams.counters) {
         counters_[kv.first].first = kv.second;
         counters_[kv.first].second = now;
@@ -274,19 +276,20 @@ class ZmqMonitor final : public ZmqEventLoop {
       thriftPub.pubType = thrift::PubType::EVENT_LOG_PUB;
       thriftPub.eventLogPub = std::move(thriftReq.eventLog);
       if (logSampleToMerge_) {
-        for(auto& sample : thriftPub.eventLogPub.samples) {
+        for (auto& sample : thriftPub.eventLogPub.samples) {
           try {
             // throws if this sample doesn't have a timestamp
             // in that case, lets just pass this sample along without appending
             auto ls = LogSample::fromJson(sample);
             ls.mergeSample(*logSampleToMerge_);
             sample = ls.toJson();
-          } catch (...) {}
+          } catch (...) {
+          }
         }
       }
       // save the event log in local queue
       if (eventLogs_.size() >= maxLogEvents_) {
-          eventLogs_.pop_front();
+        eventLogs_.pop_front();
       }
       eventLogs_.push_back(thriftPub.eventLogPub);
       monitorPubSock_.sendOne(
@@ -296,12 +299,12 @@ class ZmqMonitor final : public ZmqEventLoop {
     case thrift::MonitorCommand::GET_EVENT_LOGS: {
       thrift::EventLogsResponse thriftEventLogsRep;
       for (auto it = eventLogs_.begin(); it != eventLogs_.end(); ++it) {
-          thriftEventLogsRep.eventLogs.emplace_back(*it);
+        thriftEventLogsRep.eventLogs.emplace_back(*it);
       }
       monitorReceiveSock_.sendMultiple(
           requestIdMsg,
           Message::fromThriftObj(thriftEventLogsRep, serializer_).value());
-     } break;
+    } break;
 
     default:
       LOG(ERROR) << "Unknown monitor command received";

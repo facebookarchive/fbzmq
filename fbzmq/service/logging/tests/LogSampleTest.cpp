@@ -9,9 +9,9 @@
 
 #include <folly/dynamic.h>
 #include <folly/json.h>
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
 #include <fbzmq/service/logging/LogSample.h>
 

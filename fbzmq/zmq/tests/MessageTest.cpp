@@ -6,8 +6,8 @@
  */
 
 #include <folly/Random.h>
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 #include <fbzmq/zmq/Message.h>
 

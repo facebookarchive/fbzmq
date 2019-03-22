@@ -195,7 +195,7 @@ ZmqMonitorClient::getLastEventLogs() {
   const auto respMsg = monitorCmdSock_.recvOne();
   if (respMsg.hasError()) {
     LOG(ERROR) << "getLastEventLogs: error receiving message "
-                  << respMsg.error();
+               << respMsg.error();
     return folly::none;
   }
 

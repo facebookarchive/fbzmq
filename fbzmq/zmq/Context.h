@@ -14,7 +14,7 @@ namespace fbzmq {
 namespace detail {
 // Forward declaration of SocketImpl friend class
 class SocketImpl;
-}
+} // namespace detail
 
 /**
  * RAII over zmq_context

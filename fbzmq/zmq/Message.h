@@ -124,11 +124,10 @@ class Message {
     try {
       return util::readThriftObj<ThriftType>(buf, serializer);
     } catch (std::exception const& e) {
-      LOG(ERROR)
-        << "Failed to serialize thrift object. "
-        << "Exception: " << folly::exceptionStr(e)
-        << "Received: " << folly::humanify(
-            std::string(reinterpret_cast<const char*>(data().data()), size()));
+      LOG(ERROR) << "Failed to serialize thrift object. "
+                 << "Exception: " << folly::exceptionStr(e) << "Received: "
+                 << folly::humanify(std::string(
+                        reinterpret_cast<const char*>(data().data()), size()));
     }
     return folly::makeUnexpected(Error(EPROTO));
   }

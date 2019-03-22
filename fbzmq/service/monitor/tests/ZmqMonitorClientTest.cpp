@@ -70,8 +70,13 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   const auto counterNames = zmqMonitorClient->dumpCounterNames();
   LOG(INFO) << "got counter names...";
   std::set<std::string> s(counterNames.begin(), counterNames.end());
-  EXPECT_EQ(std::set<std::string>({"bar", "foo",
-      "process.cpu.pct", "process.memory.rss", "process.uptime.seconds"}), s);
+  EXPECT_EQ(
+      std::set<std::string>({"bar",
+                             "foo",
+                             "process.cpu.pct",
+                             "process.memory.rss",
+                             "process.uptime.seconds"}),
+      s);
 
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
