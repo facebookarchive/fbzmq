@@ -11,6 +11,12 @@
 
 #include <boost/serialization/strong_typedef.hpp>
 
+#include <folly/Expected.h>
+#ifdef FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Task.h>
+#endif
+#include <folly/io/async/EventBase.h>
+
 #include <fbzmq/zmq/Common.h>
 #include <fbzmq/zmq/Context.h>
 #include <fbzmq/zmq/Message.h>
@@ -114,6 +120,24 @@ class SocketImpl {
    * Close socket
    */
   void close() noexcept;
+
+#ifdef FOLLY_HAS_COROUTINES
+  /**
+   * Suspect current coroutine using the EventLoop as the scheduler. The
+   * coroutine will sleep until this ZMQ socket becomes readable. Until
+   * then, we can do other work in other coroutines.
+   */
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitToRecv(
+      folly::EventBase* evb);
+
+  /**
+   * Similar to the above, but waiting till ZMQ socket becomes writable.
+   * Writes should be mostly non-blocking, but they MAY block due to
+   * backpressure.
+   */
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitToSend(
+      folly::EventBase* evb);
+#endif
 
   /**
    * Send/receive methods
@@ -313,6 +337,16 @@ class SocketImpl {
 
  private:
   friend class fbzmq::SocketMonitor;
+
+#ifdef FOLLY_HAS_COROUTINES
+  enum class WaitReason : uint8_t {
+    RECV,
+    SEND,
+  };
+
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitImpl(
+      folly::EventBase* evb, WaitReason reason);
+#endif
 
   /**
    * low-level send method

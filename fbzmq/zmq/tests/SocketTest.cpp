@@ -178,6 +178,40 @@ TEST(Socket, SingleMessage) {
   EXPECT_EQ(str, rcvd.value().read<std::string>().value());
 }
 
+#ifdef FOLLY_HAS_COROUTINES
+TEST(Socket, CoroSingleMessage) {
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(ctx);
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(ctx);
+  folly::EventBase evb;
+
+  rep.bind(fbzmq::SocketUrl{"inproc://test"}).value();
+  req.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+
+  const auto str = genRandomStr(1024);
+
+  auto writer = [&evb, &req, &str]() -> folly::coro::Task<folly::Unit> {
+    auto msg = fbzmq::Message::from(str).value();
+    co_await req.waitToSend(&evb);
+    req.sendOne(msg);
+    co_return folly::unit;
+  };
+
+  auto reader = [&evb, &rep, &str]() -> folly::coro::Task<bool> {
+    co_await rep.waitToRecv(&evb);
+    auto rcvd = rep.recvOne();
+    co_return str == rcvd.value().read<std::string>().value();
+  };
+
+  auto futReader = reader().scheduleOn(&evb).start();
+  auto futWriter = writer().scheduleOn(&evb).start();
+  evb.loop();
+
+  EXPECT_TRUE(futReader.isReady());
+  EXPECT_TRUE(futReader.value());
+}
+#endif
+
 //
 // Receive within timeout: blocking
 //
