@@ -181,8 +181,9 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   EXPECT_EQ(1, counters["baz"].value);
 
   // publish some logs
-  thrift::EventLog eventLog(
-      apache::thrift::FRAGILE, "log_category", {"log1", "log2"});
+  thrift::EventLog eventLog;
+  eventLog.category = "log_category";
+  eventLog.samples = {"log1", "log2"};
   zmqMonitorClient->addEventLog(eventLog);
   LOG(INFO) << "done publishing logs...";
 

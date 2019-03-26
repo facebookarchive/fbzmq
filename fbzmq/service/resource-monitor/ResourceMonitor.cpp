@@ -12,8 +12,6 @@
 
 #include "ResourceMonitor.h"
 
-using apache::thrift::FRAGILE;
-
 namespace fbzmq {
 
 ResourceMonitor::ResourceMonitor() {

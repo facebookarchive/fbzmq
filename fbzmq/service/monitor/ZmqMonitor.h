@@ -198,14 +198,18 @@ class ZmqMonitor final : public ZmqEventLoop {
 
     // Always update uptime counter counter
     counters_[kUptimeCounter] = std::make_pair(
-        thrift::Counter(
-            apache::thrift::FRAGILE,
-            std::chrono::duration_cast<std::chrono::seconds>(now - startTime_)
-                .count(),
-            thrift::CounterValueType::COUNTER,
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                now.time_since_epoch())
-                .count()),
+        [&] {
+          thrift::Counter counter;
+          counter.value =
+              std::chrono::duration_cast<std::chrono::seconds>(now - startTime_)
+                  .count();
+          counter.valueType = thrift::CounterValueType::COUNTER;
+          counter.timestamp =
+              std::chrono::duration_cast<std::chrono::microseconds>(
+                  now.time_since_epoch())
+                  .count();
+          return counter;
+        }(),
         now);
 
     switch (thriftReq.cmd) {
@@ -253,11 +257,10 @@ class ZmqMonitor final : public ZmqEventLoop {
     case thrift::MonitorCommand::BUMP_COUNTER: {
       for (auto const& name : thriftReq.counterBumpParams.counterNames) {
         if (counters_.find(name) == counters_.end()) {
-          thrift::Counter counter(
-              apache::thrift::FRAGILE,
-              0,
-              thrift::CounterValueType::COUNTER,
-              std::time(nullptr));
+          thrift::Counter counter;
+          counter.value = 0;
+          counter.valueType = thrift::CounterValueType::COUNTER;
+          counter.timestamp = std::time(nullptr);
           counters_.emplace(name, std::make_pair(counter, now));
         }
         auto& counter = counters_[name].first;

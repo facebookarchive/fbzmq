@@ -216,10 +216,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
   fbzmq::LogSample sample1, sample2;
   sample1.addString("key", "first sample");
   sample2.addString("key", "second sample");
-  thriftReq.eventLog = thrift::EventLog(
-      apache::thrift::FRAGILE,
-      "log_category",
-      {sample1.toJson(), sample2.toJson()});
+  thriftReq.eventLog.category = "log_category";
+  thriftReq.eventLog.samples = {sample1.toJson(), sample2.toJson()};
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done publishing logs...";
 }

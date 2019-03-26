@@ -381,8 +381,8 @@ TEST(Socket, ThriftSerDeser) {
 //
 TEST(Socket, ThriftSerDeserStr) {
   CompactSerializer serializer;
-  const fbzmq::test::TestValue clientVal(
-      apache::thrift::FRAGILE, "hello world");
+  fbzmq::test::TestValue clientVal;
+  clientVal.value = "hello world";
 
   auto str = fbzmq::util::writeThriftObjStr(clientVal, serializer);
   auto obj =
