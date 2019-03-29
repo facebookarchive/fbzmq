@@ -176,7 +176,7 @@ SocketImpl::setSockOpt(int option, const void* optval, size_t len) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
@@ -194,7 +194,7 @@ SocketImpl::setKeepAlive(
 
   // Apply rest of the socket options only if keepAlive is set
   if (keepAlive != 1) {
-    return folly::Unit();
+    return folly::unit;
   }
 
   {
@@ -219,7 +219,7 @@ SocketImpl::setKeepAlive(
     }
   }
 
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
@@ -228,7 +228,7 @@ SocketImpl::getSockOpt(int option, void* optval, size_t* len) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 void
@@ -375,7 +375,7 @@ SocketImpl::bind(SocketUrl addr) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
@@ -384,7 +384,7 @@ SocketImpl::unbind(SocketUrl addr) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
@@ -402,7 +402,7 @@ SocketImpl::connect(SocketUrl addr) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
@@ -411,7 +411,7 @@ SocketImpl::disconnect(SocketUrl addr) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<size_t, Error>
@@ -434,13 +434,13 @@ SocketImpl::send(Message msg, int flags) const noexcept {
 folly::Expected<folly::Unit, Error>
 SocketImpl::addServerKey(SocketUrl server, PublicKey serverPubKey) noexcept {
   serverKeys_[server] = serverPubKey;
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<folly::Unit, Error>
 SocketImpl::delServerKey(SocketUrl server) noexcept {
   serverKeys_.erase(server);
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<Message, Error>
@@ -494,7 +494,7 @@ SocketImpl::applyKeyPair(const KeyPair& keyPair) noexcept {
   setSockOpt(ZMQ_CURVE_PUBLICKEY, curve25519Pk.data(), curve25519Pk.size())
       .value();
 
-  return folly::Unit();
+  return folly::unit;
 }
 
 void

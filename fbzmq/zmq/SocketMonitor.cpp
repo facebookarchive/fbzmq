@@ -41,7 +41,7 @@ SocketMonitor::runForever() noexcept {
     }
   } // while
 
-  return folly::Unit();
+  return folly::unit;
 }
 
 folly::Expected<bool, Error>

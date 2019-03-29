@@ -49,7 +49,7 @@ proxy(void* frontend, void* backend, void* capture) {
   while (true) {
     auto rc = zmq_proxy(frontend, backend, capture);
     if (rc == 0) {
-      return folly::Unit();
+      return folly::unit;
     }
 
     const auto errNum = zmq_errno();
