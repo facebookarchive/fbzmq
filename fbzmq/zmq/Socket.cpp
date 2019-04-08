@@ -36,7 +36,7 @@ class ZmqSocketReadyHandler : public folly::EventHandler {
       void* zmqRawSocket,
       folly::coro::Baton& baton,
       bool isRead)
-      : EventHandler(evb, fd),
+      : EventHandler(evb, folly::NetworkSocket::fromFd(fd)),
         isRead_{isRead},
         zmqRawSocket_{zmqRawSocket},
         baton_{baton} {
