@@ -45,11 +45,10 @@ install_sigar() {
     git clone https://github.com/hyperic/sigar/
   fi
   cd sigar
-  sudo yum install libtool
   ./autogen.sh
   ./configure --disable-shared CFLAGS='-fgnu89-inline'
-  sudo make install
-  sudo ldconfig
+  make install
+  ldconfig
   popd
 }
 
