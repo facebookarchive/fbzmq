@@ -105,6 +105,20 @@ SocketMonitor::runOnce() noexcept {
   case ZMQ_EVENT_DISCONNECTED:
     cb_(SocketMonitorMessage::DISCONNECTED, url);
     break;
+#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 2, 3)
+  case ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL:
+    cb_(SocketMonitorMessage::HANDSHAKE_FAILED_NO_DETAIL, url);
+    break;
+  case ZMQ_EVENT_HANDSHAKE_SUCCEEDED:
+    cb_(SocketMonitorMessage::HANDSHAKE_SUCCEEDED, url);
+    break;
+  case ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL:
+    cb_(SocketMonitorMessage::HANDSHAKE_FAILED_PROTOCOL, url);
+    break;
+  case ZMQ_EVENT_HANDSHAKE_FAILED_AUTH:
+    cb_(SocketMonitorMessage::HANDSHAKE_FAILED_AUTH, url);
+    break;
+#endif
   default:
     LOG(ERROR) << "Unknown event: " << event.event;
     break;
