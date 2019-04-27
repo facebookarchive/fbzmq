@@ -105,7 +105,7 @@ SocketMonitor::runOnce() noexcept {
   case ZMQ_EVENT_DISCONNECTED:
     cb_(SocketMonitorMessage::DISCONNECTED, url);
     break;
-#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 2, 3)
+#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 3, 0)
   case ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL:
     cb_(SocketMonitorMessage::HANDSHAKE_FAILED_NO_DETAIL, url);
     break;
