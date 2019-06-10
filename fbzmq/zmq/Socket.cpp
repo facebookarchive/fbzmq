@@ -10,7 +10,6 @@
 #ifdef FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Baton.h>
 #endif
-#include <folly/fibers/Baton.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/net/NetworkSocket.h>
@@ -120,10 +119,8 @@ class FiberZmqSocketReadyHandler : public folly::EventHandler {
 
     uint32_t zmqEvents{0};
     size_t zmqEventsLen = sizeof(zmqEvents);
-
     errorCode =
         zmq_getsockopt(zmqRawSocket_, ZMQ_EVENTS, &zmqEvents, &zmqEventsLen);
-
     // if ready or got error, notify the sleepr
     if ((errorCode != 0) ||
         (zmqEvents & (isRead_ ? ZMQ_POLLIN : ZMQ_POLLOUT))) {
@@ -299,6 +296,11 @@ SocketImpl::close() noexcept {
   if (not ptr_) {
     return;
   }
+  if (fiberBaton_) {
+    // Notice this does not wake up blocking read (recvOne...)
+    // when socket close happen
+    fiberBaton_->post();
+  }
   const int rc = zmq_close(ptr_);
   CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   ptr_ = nullptr;
@@ -359,6 +361,7 @@ SocketImpl::fiberWaitImpl(WaitReason reason) {
   auto evb = &lc.getEventBase()->getEventBase();
 
   folly::fibers::Baton baton;
+  fiberBaton_ = &baton;
   int zmqFd{-1};
   size_t fdLen = sizeof(zmqFd);
 
@@ -370,9 +373,11 @@ SocketImpl::fiberWaitImpl(WaitReason reason) {
 
   FiberZmqSocketReadyHandler zh(
       evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
+
   // when zmqFd becomes readable, the event handler will post
   // on the baton. Until then, this coroutine will be suspended
   baton.wait();
+  fiberBaton_ = nullptr;
   if (zh.errorCode) {
     return folly::makeUnexpected(Error(zh.errorCode));
   }

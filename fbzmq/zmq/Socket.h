@@ -15,11 +15,11 @@
 #ifdef FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Task.h>
 #endif
-#include <folly/io/async/EventBase.h>
-
 #include <fbzmq/zmq/Common.h>
 #include <fbzmq/zmq/Context.h>
 #include <fbzmq/zmq/Message.h>
+#include <folly/fibers/Baton.h>
+#include <folly/io/async/EventBase.h>
 
 namespace fbzmq {
 
@@ -386,6 +386,8 @@ class SocketImpl {
   // point to the raw context we run under. mainly needed to pass to
   // SocketMonitor object
   void* ctxPtr_{nullptr};
+
+  folly::fibers::Baton* fiberBaton_{nullptr};
 
   // the crypto key pair.
   folly::Optional<KeyPair> keyPair_;

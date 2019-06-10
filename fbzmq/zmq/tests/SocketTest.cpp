@@ -14,8 +14,10 @@
 
 #include <fbzmq/zmq/Socket.h>
 #include <fbzmq/zmq/tests/gen-cpp2/Test_types.h>
+#include <folly/fibers/Baton.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/FiberManager.h>
+#include <folly/io/async/AsyncTimeout.h>
 
 using namespace std::chrono_literals;
 
@@ -251,6 +253,44 @@ TEST(Socket, FiberSingleMessage) {
   // wait for fiber to finish
   std::move(sender).get();
   std::move(receiver).get();
+}
+
+TEST(Socket, FiberSubSocketClose) {
+  using namespace folly::fibers;
+
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
+  folly::EventBase evb;
+
+  sub.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+
+  auto fm = std::make_unique<FiberManager>(
+      std::make_unique<EventBaseLoopController>());
+  static_cast<EventBaseLoopController&>(fm->loopController())
+      .attachEventBase(evb);
+
+  // both will block on waitToRead
+  auto client = fm->addTaskFuture([&sub]() {
+    sub.fiberWaitToRecv();
+    auto rcvd = sub.recvOne();
+    EXPECT_TRUE(rcvd.hasError());
+  });
+
+  fm->addTask([&sub, &evb]() {
+    // wait for 50ms before close the socket
+    folly::fibers::Baton bt;
+    auto timeout = folly::AsyncTimeout::schedule(
+        std::chrono::milliseconds(50), evb, [&bt]() noexcept { bt.post(); });
+    bt.wait();
+    // close both sockets
+    sub.close();
+  });
+
+  evb.loop();
+
+  // wait for fiber to finish
+  std::move(client).get();
 }
 
 //
