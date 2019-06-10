@@ -127,7 +127,7 @@ class SocketImpl {
    * coroutine will sleep until this ZMQ socket becomes readable. Until
    * then, we can do other work in other coroutines.
    */
-  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitToRecv(
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> coroWaitToRecv(
       folly::EventBase* evb);
 
   /**
@@ -135,9 +135,11 @@ class SocketImpl {
    * Writes should be mostly non-blocking, but they MAY block due to
    * backpressure.
    */
-  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitToSend(
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> coroWaitToSend(
       folly::EventBase* evb);
 #endif
+  folly::Expected<folly::Unit, Error> fiberWaitToRecv();
+  folly::Expected<folly::Unit, Error> fiberWaitToSend();
 
   /**
    * Send/receive methods
@@ -338,15 +340,16 @@ class SocketImpl {
  private:
   friend class fbzmq::SocketMonitor;
 
-#ifdef FOLLY_HAS_COROUTINES
   enum class WaitReason : uint8_t {
     RECV,
     SEND,
   };
-
-  folly::coro::Task<folly::Expected<folly::Unit, Error>> waitImpl(
+#ifdef FOLLY_HAS_COROUTINES
+  folly::coro::Task<folly::Expected<folly::Unit, Error>> coroWaitImpl(
       folly::EventBase* evb, WaitReason reason);
 #endif
+
+  folly::Expected<folly::Unit, Error> fiberWaitImpl(WaitReason reason);
 
   /**
    * low-level send method

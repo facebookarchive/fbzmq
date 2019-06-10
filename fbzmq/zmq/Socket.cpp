@@ -10,7 +10,10 @@
 #ifdef FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Baton.h>
 #endif
+#include <folly/fibers/Baton.h>
+#include <folly/fibers/EventBaseLoopController.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/net/NetworkSocket.h>
 
 namespace {
 
@@ -27,9 +30,9 @@ namespace {
 // We integrate the handler with co-routines by posting on coro::baton when
 // the corresponding event happens.
 //
-class ZmqSocketReadyHandler : public folly::EventHandler {
+class CoroZmqSocketReadyHandler : public folly::EventHandler {
  public:
-  ZmqSocketReadyHandler(
+  CoroZmqSocketReadyHandler(
       folly::EventBase* evb,
       int fd,
       // pointer to raw ZMQ socket, so we can zmq_getsockopt()
@@ -75,6 +78,66 @@ class ZmqSocketReadyHandler : public folly::EventHandler {
   std::reference_wrapper<folly::coro::Baton> baton_;
 };
 #endif
+
+//
+// ZMQ exposes special FD that in a sense similar to eventFd. The ZMQ
+// library will post events on the FD making it readable or writable,
+// to indicate that corresponding ZMQ socket is ready for reading or writing.
+//
+// The following EventHandler grabs that special FD for ZMQ socket, then
+// adds it to EventBase for tracking. The event handler fires when socket
+// state changes.
+//
+// We integrate the handler with folly::dibers by posting on fibers::baton when
+// the corresponding event happens.
+//
+class FiberZmqSocketReadyHandler : public folly::EventHandler {
+ public:
+  FiberZmqSocketReadyHandler(
+      folly::EventBase* evb,
+      int fd,
+      // pointer to raw ZMQ socket, so we can zmq_getsockopt()
+      void* zmqRawSocket,
+      folly::fibers::Baton& baton,
+      bool isRead)
+      : EventHandler(evb, folly::NetworkSocket::fromFd(fd)),
+        isRead_{isRead},
+        zmqRawSocket_{zmqRawSocket},
+        baton_{baton} {
+    registerHandler(
+        (isRead_ ? EventHandler::READ : EventHandler::WRITE) |
+        EventHandler::PERSIST);
+  }
+
+  // we set this if ZMQ layer passes us an error
+  int errorCode{0};
+
+  void
+  handlerReady(uint16_t events) noexcept override {
+    if (!(events & (EventHandler::READ | EventHandler::WRITE))) {
+      return;
+    }
+
+    uint32_t zmqEvents{0};
+    size_t zmqEventsLen = sizeof(zmqEvents);
+
+    errorCode =
+        zmq_getsockopt(zmqRawSocket_, ZMQ_EVENTS, &zmqEvents, &zmqEventsLen);
+
+    // if ready or got error, notify the sleepr
+    if ((errorCode != 0) ||
+        (zmqEvents & (isRead_ ? ZMQ_POLLIN : ZMQ_POLLOUT))) {
+      unregisterHandler();
+      baton_.get().post();
+    }
+    // otherwise, we keep handler registered
+  }
+
+ private:
+  bool isRead_{true};
+  void* zmqRawSocket_{nullptr};
+  std::reference_wrapper<folly::fibers::Baton> baton_;
+};
 
 } // namespace
 
@@ -243,17 +306,17 @@ SocketImpl::close() noexcept {
 
 #ifdef FOLLY_HAS_COROUTINES
 folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::waitToRecv(folly::EventBase* evb) {
-  co_return co_await waitImpl(evb, WaitReason::RECV);
+SocketImpl::coroWaitToRecv(folly::EventBase* evb) {
+  co_return co_await coroWaitImpl(evb, WaitReason::RECV);
 }
 
 folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::waitToSend(folly::EventBase* evb) {
-  co_return co_await waitImpl(evb, WaitReason::SEND);
+SocketImpl::coroWaitToSend(folly::EventBase* evb) {
+  co_return co_await coroWaitImpl(evb, WaitReason::SEND);
 }
 
 folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::waitImpl(folly::EventBase* evb, WaitReason reason) {
+SocketImpl::coroWaitImpl(folly::EventBase* evb, WaitReason reason) {
   folly::coro::Baton baton;
   int zmqFd{-1};
   size_t fdLen = sizeof(zmqFd);
@@ -264,7 +327,8 @@ SocketImpl::waitImpl(folly::EventBase* evb, WaitReason reason) {
     co_return folly::makeUnexpected(Error());
   }
 
-  ZmqSocketReadyHandler zh(evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
+  CoroZmqSocketReadyHandler zh(
+      evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
   // when zmqFd becomes readable, the event handler will post
   // on the baton. Until then, this coroutine will be suspended
   co_await baton;
@@ -274,6 +338,46 @@ SocketImpl::waitImpl(folly::EventBase* evb, WaitReason reason) {
   co_return folly::unit;
 }
 #endif
+
+folly::Expected<folly::Unit, Error>
+SocketImpl::fiberWaitToRecv() {
+  return fiberWaitImpl(WaitReason::RECV);
+}
+
+folly::Expected<folly::Unit, Error>
+SocketImpl::fiberWaitToSend() {
+  return fiberWaitImpl(WaitReason::SEND);
+}
+
+folly::Expected<folly::Unit, Error>
+SocketImpl::fiberWaitImpl(WaitReason reason) {
+  CHECK(folly::fibers::onFiber()) << "Not on fiber!";
+
+  auto& fm = folly::fibers::FiberManager::getFiberManager();
+  auto& lc =
+      static_cast<folly::fibers::EventBaseLoopController&>(fm.loopController());
+  auto evb = &lc.getEventBase()->getEventBase();
+
+  folly::fibers::Baton baton;
+  int zmqFd{-1};
+  size_t fdLen = sizeof(zmqFd);
+
+  const auto rc = zmq_getsockopt(ptr_, ZMQ_FD, &zmqFd, &fdLen);
+
+  if (rc != 0) {
+    return folly::makeUnexpected(Error());
+  }
+
+  FiberZmqSocketReadyHandler zh(
+      evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
+  // when zmqFd becomes readable, the event handler will post
+  // on the baton. Until then, this coroutine will be suspended
+  baton.wait();
+  if (zh.errorCode) {
+    return folly::makeUnexpected(Error(zh.errorCode));
+  }
+  return folly::unit;
+}
 
 folly::Expected<size_t, Error>
 SocketImpl::sendOne(Message msg) const noexcept {

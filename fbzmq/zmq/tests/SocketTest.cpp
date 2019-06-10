@@ -14,6 +14,8 @@
 
 #include <fbzmq/zmq/Socket.h>
 #include <fbzmq/zmq/tests/gen-cpp2/Test_types.h>
+#include <folly/fibers/EventBaseLoopController.h>
+#include <folly/fibers/FiberManager.h>
 
 using namespace std::chrono_literals;
 
@@ -192,13 +194,13 @@ TEST(Socket, CoroSingleMessage) {
 
   auto writer = [&evb, &req, &str]() -> folly::coro::Task<folly::Unit> {
     auto msg = fbzmq::Message::from(str).value();
-    co_await req.waitToSend(&evb);
+    co_await req.coroWaitToSend(&evb);
     req.sendOne(msg);
     co_return folly::unit;
   };
 
   auto reader = [&evb, &rep, &str]() -> folly::coro::Task<bool> {
-    co_await rep.waitToRecv(&evb);
+    co_await rep.coroWaitToRecv(&evb);
     auto rcvd = rep.recvOne();
     co_return str == rcvd.value().read<std::string>().value();
   };
@@ -211,6 +213,45 @@ TEST(Socket, CoroSingleMessage) {
   EXPECT_TRUE(futReader.value());
 }
 #endif
+
+TEST(Socket, FiberSingleMessage) {
+  using namespace folly::fibers;
+
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(ctx);
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(ctx);
+  folly::EventBase evb;
+
+  rep.bind(fbzmq::SocketUrl{"inproc://test"}).value();
+  req.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+
+  auto fm = std::make_unique<FiberManager>(
+      std::make_unique<EventBaseLoopController>());
+  static_cast<EventBaseLoopController&>(fm->loopController())
+      .attachEventBase(evb);
+
+  const auto str = genRandomStr(1024);
+
+  auto sender = fm->addTaskFuture([&req, &str]() {
+    VLOG(1) << "Start sender fiber";
+    auto msg = fbzmq::Message::from(str).value();
+    req.fiberWaitToSend();
+    req.sendOne(msg);
+  });
+
+  auto receiver = fm->addTaskFuture([&rep, &str]() {
+    VLOG(1) << "Start receiver fiber";
+    rep.fiberWaitToRecv();
+    auto rcvd = rep.recvOne();
+    EXPECT_EQ(str, rcvd.value().read<std::string>().value());
+  });
+
+  evb.loop();
+
+  // wait for fiber to finish
+  std::move(sender).get();
+  std::move(receiver).get();
+}
 
 //
 // Receive within timeout: blocking

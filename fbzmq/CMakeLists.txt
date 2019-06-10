@@ -21,25 +21,40 @@ find_library(DOUBLECONV double-conversion)
 find_library(GFLAGS gflags)
 find_library(GLOG glog)
 find_library(PTHREAD pthread)
-find_library(SODIUM sodium)
+find_package(Sodium CONFIG REQUIRED)
 find_library(ZMQ zmq)
 find_library(SIGAR sigar)
+find_package(Threads REQUIRED)
+find_package(Boost 1.67.0 MODULE
+  COMPONENTS
+    context
+    fiber
+  REQUIRED
+)
+
+include_directories(${Boost_INCLUDE_DIRS})
 
 # Facebook specific libraries
-find_library(FOLLY folly PATHS)
-find_library(FIZZ fizz PATHS)
+find_package(fmt CONFIG REQUIRED)
+find_package(folly CONFIG REQUIRED)
+find_package(fizz CONFIG REQUIRED)
+find_package(wangle CONFIG REQUIRED)
 find_library(ZSTD zstd)
+
+include_directories(${FOLLY_INCLUDE_DIRS})
 
 # Include Thrift
 find_program(THRIFT1 thrift1)
-find_library(THRIFTCPP2 thriftcpp2)
-find_library(THRIFTPROTOCOL thriftprotocol)
+# find_library(THRIFTCPP2 thriftcpp2)
+# find_library(THRIFTPROTOCOL thriftprotocol)
+find_package(FBThrift CONFIG REQUIRED)
 find_library(PROTOCOL protocol)
 find_library(TRANSPORT transport)
 find_path(THRIFT_COMPILER_INCLUDE thrift/templates)
 set(THRIFT_TEMPLATES ${THRIFT_COMPILER_INCLUDE}/thrift/templates)
 include(${THRIFT_COMPILER_INCLUDE}/thrift/ThriftLibrary.cmake)
 
+include_directories(${FBTHRIFT_INCLUDE_DIR})
 #
 # Generate thrift defs for C++ only. For python install via setuptools
 #
@@ -82,21 +97,27 @@ if (BUILD_SHARED_LIBS)
   set_target_properties(fbzmq PROPERTIES VERSION 1.0.0 SOVERSION 1)
 endif()
 
-target_link_libraries(fbzmq
+target_link_libraries(fbzmq INTERFACE
   ${ZSTD}
-  ${FOLLY}
+  Folly::folly
   ${DOUBLECONV}
   ${GFLAGS}
   ${GLOG}
   ${ZMQ}
-  ${SODIUM}
+  ${Sodium_LIBRARIES}
   ${PTHREAD}
-  ${THRIFTPROTOCOL}
+  FBThrift::thriftprotocol
   ${PROTOCOL}
   ${TRANSPORT}
   ${SIGAR}
+  ${Boost_LIBRARIES}
   -ldl
 )
+
+target_include_directories(fbzmq
+ ${Sodium_INCLUDE_DIR}
+)
+
 
 install(TARGETS
   fbzmq
@@ -186,6 +207,10 @@ if (BUILD_TESTS)
     "fbzmq/zmq/tests" #include_prefix
   )
 
+  target_link_libraries(Test-cpp2 INTERFACE
+    Folly::folly
+  )
+
   thrift_library(
     "Example" #file_name
     "" #services
@@ -194,6 +219,10 @@ if (BUILD_TESTS)
     "${CMAKE_SOURCE_DIR}/examples/if" #file_path
     "${CMAKE_BINARY_DIR}/fbzmq/examples/if" #output_path
     "fbzmq/examples/if" #include_prefix
+  )
+
+  target_link_libraries(Example-cpp2 INTERFACE
+    Folly::folly
   )
 
   add_executable(signal_handler_test
