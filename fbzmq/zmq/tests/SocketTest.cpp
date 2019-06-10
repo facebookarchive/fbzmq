@@ -255,6 +255,65 @@ TEST(Socket, FiberSingleMessage) {
   std::move(receiver).get();
 }
 
+TEST(Socket, FiberPubSubMessage) {
+  using namespace folly::fibers;
+
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
+  fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub(
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
+  folly::EventBase evb;
+
+  pub.bind(fbzmq::SocketUrl{"ipc:///tmp/test"}).value();
+  sub.connect(fbzmq::SocketUrl{"ipc:///tmp/test"}).value();
+  sub.setSockOpt(ZMQ_SUBSCRIBE, "", 0).value();
+
+  auto fm = std::make_unique<FiberManager>(
+      std::make_unique<EventBaseLoopController>());
+  static_cast<EventBaseLoopController&>(fm->loopController())
+      .attachEventBase(evb);
+
+  const auto str = genRandomStr(1024);
+
+  // receiver needs to drain all messages before put back to wait
+  auto receiver = fm->addTaskFuture([&sub]() {
+    auto rcvdMsgCnt = 0;
+    while (true) {
+      sub.fiberWaitToRecv();
+      auto rcvd = sub.drain().value();
+      // if sender sends too fast we will receive >1 messages here
+      rcvdMsgCnt += rcvd.size();
+      VLOG(1) << "Receiver got " << rcvdMsgCnt << " msgs";
+      if (rcvdMsgCnt == 1024) {
+        break;
+      }
+    }
+    SUCCEED();
+  });
+
+  auto sender = fm->addTaskFuture([&pub, &str, &evb]() {
+    for (int i = 0; i < 1024; i++) {
+      auto msg = fbzmq::Message::from(str).value();
+      pub.fiberWaitToSend();
+      pub.sendOne(msg);
+      // random wait before send next msg
+      folly::fibers::Baton bt;
+      auto timeout = folly::AsyncTimeout::schedule(
+          std::chrono::milliseconds(folly::Random::rand32(0, 20)),
+          evb,
+          [&bt]() noexcept { bt.post(); });
+      bt.wait();
+    }
+  });
+
+  evb.loop();
+
+  // wait for fiber to finish
+  std::move(sender).get();
+  std::move(receiver).get();
+}
+
 TEST(Socket, FiberSubSocketClose) {
   using namespace folly::fibers;
 
@@ -273,8 +332,7 @@ TEST(Socket, FiberSubSocketClose) {
   // both will block on waitToRead
   auto client = fm->addTaskFuture([&sub]() {
     sub.fiberWaitToRecv();
-    auto rcvd = sub.recvOne();
-    EXPECT_TRUE(rcvd.hasError());
+    EXPECT_TRUE(sub.recvOne().hasError());
   });
 
   fm->addTask([&sub, &evb]() {

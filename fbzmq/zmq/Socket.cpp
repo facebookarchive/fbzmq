@@ -478,6 +478,25 @@ SocketImpl::hasMore() noexcept {
   return (more == 1);
 }
 
+folly::Expected<std::vector<Message>, Error>
+SocketImpl::drain(
+    folly::Optional<std::chrono::milliseconds> timeout /* = folly::none */) {
+  std::vector<Message> result;
+  // read till socket throws EAGAIN error
+  while (true) {
+    auto msg = recvOne(timeout);
+    if (msg.hasValue()) {
+      result.emplace_back(std::move(msg.value()));
+      continue;
+    }
+    if (msg.error().errNum == EAGAIN) {
+      break;
+    }
+    return folly::makeUnexpected(msg.error());
+  }
+  return result;
+}
+
 folly::Expected<folly::Unit, Error>
 SocketImpl::bind(SocketUrl addr) noexcept {
   const int rc = zmq_bind(ptr_, static_cast<std::string>(addr).c_str());

@@ -215,6 +215,14 @@ class SocketImpl {
       folly::Optional<std::chrono::milliseconds> timeout = folly::none);
 
   /**
+   * Receive all pending messages on socket (till socket return EAGAIN)
+   * This will return an error if one of the message recv returns unexpected
+   * error.
+   */
+  folly::Expected<std::vector<Message>, Error> drain(
+      folly::Optional<std::chrono::milliseconds> timeout = folly::none);
+
+  /**
    * Send has two modes: first one ships standalone message the second one sets
    * the "more" flag, allowing for atomic message chaining
    */
