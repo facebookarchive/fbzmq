@@ -14,14 +14,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-noexcept-type")
 
 include_directories(${CMAKE_SOURCE_DIR}/..)
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_BINARY_DIR}/..)
+
+include(${CMAKE_SOURCE_DIR}/build/fbcode_builder/CMake/ThriftCppLibrary.cmake)
 
 # External third-party libraries
 find_library(DOUBLECONV double-conversion)
-find_library(GFLAGS gflags)
-find_library(GLOG glog)
+find_package(Gflags REQUIRED)
+find_package(Glog REQUIRED)
 find_library(PTHREAD pthread)
-find_package(Sodium CONFIG REQUIRED)
 find_library(ZMQ zmq)
 find_library(SIGAR sigar)
 find_package(Threads REQUIRED)
@@ -32,43 +33,35 @@ find_package(Boost 1.67.0 MODULE
   REQUIRED
 )
 
-include_directories(${Boost_INCLUDE_DIRS})
+find_path(ZMQ_INCLUDE_DIR zmq.h)
+find_path(SIGAR_INCLUDE_DIR sigar.h)
+
+include_directories(${Boost_INCLUDE_DIRS} ${ZMQ_INCLUDE_DIR} ${SIGAR_INCLUDE_DIR})
+
 
 # Facebook specific libraries
-find_package(fmt CONFIG REQUIRED)
 find_package(folly CONFIG REQUIRED)
-find_package(fizz CONFIG REQUIRED)
-find_package(wangle CONFIG REQUIRED)
 find_library(ZSTD zstd)
-
-include_directories(${FOLLY_INCLUDE_DIRS})
+find_package(fizz CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(wangle CONFIG REQUIRED)
+find_package(FBThrift CONFIG REQUIRED)
+find_package(yarpl CONFIG REQUIRED)
+find_package(rsocket CONFIG REQUIRED)
 
 # Include Thrift
-find_program(THRIFT1 thrift1)
-# find_library(THRIFTCPP2 thriftcpp2)
-# find_library(THRIFTPROTOCOL thriftprotocol)
-find_package(FBThrift CONFIG REQUIRED)
-find_library(PROTOCOL protocol)
-find_library(TRANSPORT transport)
-find_path(THRIFT_COMPILER_INCLUDE thrift/templates)
-set(THRIFT_TEMPLATES ${THRIFT_COMPILER_INCLUDE}/thrift/templates)
-include(${THRIFT_COMPILER_INCLUDE}/thrift/ThriftLibrary.cmake)
-
 include_directories(${FBTHRIFT_INCLUDE_DIR})
+
 #
 # Generate thrift defs for C++ only. For python install via setuptools
 #
-set(THRIFT_DIR ${CMAKE_BINARY_DIR}/fbzmq/service/if)
-file(MAKE_DIRECTORY ${THRIFT_DIR})
 
-thrift_object(
-  "Monitor" #file_name
-  "" #services
-  "cpp2" #language
-  "json,optionals" #options
-  "${CMAKE_SOURCE_DIR}/service/if" #file_path
-  "${THRIFT_DIR}" #output_path
-  "fbzmq/service/if" #include_prefix
+add_thrift_cpp2_library(
+  monitor_cpp2
+  service/if/Monitor.thrift
+  OPTIONS
+    json
+    optionals
 )
 
 #
@@ -90,34 +83,34 @@ add_library(fbzmq
   zmq/Message.cpp
   zmq/Socket.cpp
   zmq/SocketMonitor.cpp
-  $<TARGET_OBJECTS:Monitor-cpp2-obj>
 )
 
 if (BUILD_SHARED_LIBS)
   set_target_properties(fbzmq PROPERTIES VERSION 1.0.0 SOVERSION 1)
 endif()
 
-target_link_libraries(fbzmq INTERFACE
+target_link_libraries(fbzmq
+  monitor_cpp2
   ${ZSTD}
   Folly::folly
   ${DOUBLECONV}
-  ${GFLAGS}
-  ${GLOG}
+  glog::glog
+  gflags
   ${ZMQ}
-  ${Sodium_LIBRARIES}
   ${PTHREAD}
-  FBThrift::thriftprotocol
-  ${PROTOCOL}
-  ${TRANSPORT}
+  FBThrift::thriftcpp2
   ${SIGAR}
   ${Boost_LIBRARIES}
   -ldl
 )
 
-target_include_directories(fbzmq
- ${Sodium_INCLUDE_DIR}
+target_include_directories(fbzmq PRIVATE
+  ${FOLLY_INCLUDE_DIR}
+  ${GLOG_INCLUDE_DIR}
+  ${GFLAGS_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${CMAKE_PREFIX_PATH}
 )
-
 
 install(TARGETS
   fbzmq
@@ -167,10 +160,11 @@ install(FILES
   DESTINATION include/fbzmq/service/stats
 )
 
+message("CMAKE_BINARY_DIR = ${CMAKE_BINARY_DIR}")
 install(FILES
-  ${THRIFT_DIR}/gen-cpp2/Monitor_constants.h
-  ${THRIFT_DIR}/gen-cpp2/Monitor_data.h
-  ${THRIFT_DIR}/gen-cpp2/Monitor_types.h
+  ${CMAKE_BINARY_DIR}/service/if/gen-cpp2/Monitor_constants.h
+  ${CMAKE_BINARY_DIR}/service/if/gen-cpp2/Monitor_data.h
+  ${CMAKE_BINARY_DIR}/service/if/gen-cpp2/Monitor_types.h
   DESTINATION include/fbzmq/service/if/gen-cpp2
 )
 
@@ -189,40 +183,25 @@ if (BUILD_TESTS)
 
   enable_testing()
 
-  find_library(GTEST gtest)
-  find_library(GTEST_MAIN gtest_main)
+  find_package(GTest REQUIRED)
   find_library(ZSTD zstd)
 
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq)
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/examples/if)
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/fbzmq/zmq/tests)
+  include_directories(${GTEST_INCLUDE_DIRS})
 
-  thrift_library(
-    "Test" #file_name
-    "" #services
-    "cpp2" #language
-    "json,optionals" #options
-    "${CMAKE_SOURCE_DIR}/zmq/tests" #file_path
-    "${CMAKE_BINARY_DIR}/fbzmq/zmq/tests" #output_path
-    "fbzmq/zmq/tests" #include_prefix
+  add_thrift_cpp2_library(
+    test_cpp2
+    zmq/tests/Test.thrift
+    OPTIONS
+      json
+      optionals
   )
 
-  target_link_libraries(Test-cpp2 INTERFACE
-    Folly::folly
-  )
-
-  thrift_library(
-    "Example" #file_name
-    "" #services
-    "cpp2" #language
-    "json,optionals" #options
-    "${CMAKE_SOURCE_DIR}/examples/if" #file_path
-    "${CMAKE_BINARY_DIR}/fbzmq/examples/if" #output_path
-    "fbzmq/examples/if" #include_prefix
-  )
-
-  target_link_libraries(Example-cpp2 INTERFACE
-    Folly::folly
+  add_thrift_cpp2_library(
+    example_cpp2
+    examples/if/Example.thrift
+    OPTIONS
+      json
+      optionals
   )
 
   add_executable(signal_handler_test
@@ -283,85 +262,86 @@ if (BUILD_TESTS)
 
   target_link_libraries(signal_handler_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_eventloop_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_throttle_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_timeout_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(common_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(context_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(message_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(socket_test
     fbzmq
-    Test-cpp2
-    ${GTEST}
-    ${GTEST_MAIN}
+    test_cpp2
+    Folly::folly
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(socket_monitor_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(log_sample_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(thread_data_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_monitor_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_monitor_client_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(resource_monitor_test
     fbzmq
-    ${GTEST}
-    ${GTEST_MAIN}
+    GTest::GTest
+    GTest::Main
   )
   target_link_libraries(zmq_monitor_sample
     fbzmq
   )
   target_link_libraries(zmq_server_example
     fbzmq
-    Example-cpp2
+    example_cpp2
   )
   target_link_libraries(zmq_client_example
     fbzmq
-    Example-cpp2
+    example_cpp2
   )
 
   add_test(SignalHandlerTest signal_handler_test)
