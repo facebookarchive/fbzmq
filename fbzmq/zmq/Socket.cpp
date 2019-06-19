@@ -577,7 +577,7 @@ SocketImpl::recv(int flags) const noexcept {
   while (true) {
     const int n = zmq_msg_recv(&(msg.msg_), ptr_, flags);
     if (n >= 0) {
-      return std::move(msg);
+      return msg;
     }
 
     const int err = zmq_errno();
