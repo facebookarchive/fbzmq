@@ -35,7 +35,7 @@ Message::allocate(size_t size) noexcept {
   if (rc != 0) {
     return folly::makeUnexpected(Error());
   }
-  return std::move(msg);
+  return msg;
 }
 
 folly::Expected<Message, Error>
@@ -58,7 +58,7 @@ Message::wrapBuffer(std::unique_ptr<folly::IOBuf> buf) noexcept {
     delete ptr;
     return folly::makeUnexpected(Error());
   }
-  return std::move(msg);
+  return msg;
 }
 
 Message&
