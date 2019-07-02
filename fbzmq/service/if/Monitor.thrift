@@ -9,6 +9,7 @@ namespace cpp fbzmq.thrift
 namespace cpp2 fbzmq.thrift
 namespace php Fbzmq
 namespace py fbzmq.Monitor
+namespace py3 fbzmq.thrift
 
 enum MonitorCommand {
   // operations on counters in the monitor
@@ -41,7 +42,8 @@ struct Counter {
   12: i64 timestamp
 }
 typedef map<string, Counter>
-  (cpp.type = "std::unordered_map<std::string, Counter>") CounterMap
+  (cpp.type = "std::unordered_map<std::string, fbzmq::thrift::Counter>")
+  CounterMap
 
 // parameters for SET_COUNTER_VALUES command
 struct CounterSetParams {
