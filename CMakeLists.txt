@@ -16,7 +16,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-noexcept-type")
 include_directories(${CMAKE_SOURCE_DIR}/..)
 include_directories(${CMAKE_BINARY_DIR}/..)
 
-include(${CMAKE_SOURCE_DIR}/build/fbcode_builder/CMake/ThriftCppLibrary.cmake)
+set(
+  CMAKE_MODULE_PATH
+  "${CMAKE_SOURCE_DIR}/build/fbcode_builder/CMake"
+  ${CMAKE_MODULE_PATH}
+)
+include(ThriftCppLibrary)
 
 # External third-party libraries
 find_library(DOUBLECONV double-conversion)
