@@ -9,7 +9,7 @@
 # Generate thrift defs for C++ only. For python install via setuptools
 #
 
-add_thrift_cpp2_library(
+add_fbthrift_cpp_library(
   monitor_cpp2
   service/if/Monitor.thrift
   OPTIONS
@@ -140,7 +140,7 @@ if (BUILD_TESTS)
 
   include_directories(${GTEST_INCLUDE_DIRS})
 
-  add_thrift_cpp2_library(
+  add_fbthrift_cpp_library(
     test_cpp2
     zmq/tests/Test.thrift
     OPTIONS
@@ -148,7 +148,7 @@ if (BUILD_TESTS)
       optionals
   )
 
-  add_thrift_cpp2_library(
+  add_fbthrift_cpp_library(
     example_cpp2
     examples/if/Example.thrift
     OPTIONS

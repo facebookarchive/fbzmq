@@ -21,7 +21,7 @@ set(
   "${CMAKE_SOURCE_DIR}/build/fbcode_builder/CMake"
   ${CMAKE_MODULE_PATH}
 )
-include(ThriftCppLibrary)
+include(FBThriftCppLibrary)
 
 # External third-party libraries
 find_library(DOUBLECONV double-conversion)
