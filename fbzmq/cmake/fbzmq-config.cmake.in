@@ -1,0 +1,17 @@
+#
+# CMake package configuration file for fbzmq
+#
+# Defines the target "fbzmq::fbzmq"
+# Add this to your target_link_libraries() call to depend on fbzmq.
+
+@PACKAGE_INIT@
+
+set_and_check(FBZMQ_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
+
+if (NOT TARGET fbzmq::fbzmq)
+  include("${FBZMQ_CMAKE_DIR}/fbzmq-targets.cmake")
+endif()
+
+if (NOT fbzmq_FIND_QUIETLY)
+  message(STATUS "Found fbzmq: ${PACKAGE_PREFIX_DIR}")
+endif()

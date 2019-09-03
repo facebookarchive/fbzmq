@@ -15,6 +15,8 @@ add_fbthrift_cpp_library(
   OPTIONS
     json
     optionals
+  THRIFT_INCLUDE_DIR
+    include
 )
 
 #
@@ -70,6 +72,34 @@ install(TARGETS
   DESTINATION lib
 )
 
+install(
+  TARGETS fbzmq monitor_cpp2 monitor_cpp2.thrift_includes
+  EXPORT fbzmq-exports
+  DESTINATION lib
+)
+
+set(CMAKE_INSTALL_DIR lib/cmake/fbzmq CACHE STRING
+    "The subdirectory where CMake package config files should be installed")
+
+# Install CMake package configuration files for fbzmq
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  cmake/fbzmq-config.cmake.in
+  fbzmq-config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_DIR}
+  PATH_VARS
+    CMAKE_INSTALL_DIR
+)
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/fbzmq-config.cmake
+  DESTINATION ${CMAKE_INSTALL_DIR}
+)
+install(EXPORT fbzmq-exports
+        FILE fbzmq-targets.cmake
+        NAMESPACE fbzmq::
+        DESTINATION ${CMAKE_INSTALL_DIR})
+
+
 install(FILES
   async/AsyncSignalHandler.h
   async/Runnable.h
@@ -111,18 +141,6 @@ install(FILES
   service/stats/ExportType.h
   service/stats/ThreadData.h
   DESTINATION include/fbzmq/service/stats
-)
-
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_constants.h
-  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_data.h
-  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_types.h
-  DESTINATION include/fbzmq/service/if/gen-cpp2
-)
-
-install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/service/if/Monitor.thrift
-  DESTINATION include/fbzmq/service/if
 )
 
 #
