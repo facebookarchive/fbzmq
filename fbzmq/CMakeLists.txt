@@ -143,6 +143,18 @@ install(FILES
   DESTINATION include/fbzmq/service/stats
 )
 
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_constants.h
+  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_data.h
+  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_types.h
+  DESTINATION include/fbzmq/service/if/gen-cpp2
+)
+
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/service/if/Monitor.thrift
+  DESTINATION include/fbzmq/service/if
+)
+
 #
 # Unit-tests
 #
