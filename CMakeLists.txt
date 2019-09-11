@@ -34,7 +34,6 @@ find_package(Threads REQUIRED)
 find_package(Boost 1.67.0 MODULE
   COMPONENTS
     context
-    fiber
   REQUIRED
 )
 
