@@ -16,7 +16,6 @@
 using namespace std;
 using namespace fbzmq;
 
-using apache::thrift::CompactSerializer;
 
 TEST(ZmqMonitorClientTest, BasicOperation) {
   SCOPE_EXIT {

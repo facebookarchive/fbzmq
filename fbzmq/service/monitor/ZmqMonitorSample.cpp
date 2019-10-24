@@ -21,7 +21,6 @@ DEFINE_int32(monitor_router_port, 60008, "The monitor router port we talk to");
 DEFINE_bool(periodic, true, "Whether to do periodic monitoring");
 DEFINE_int32(period, 5, "Period in second");
 
-using apache::thrift::CompactSerializer;
 
 // send DUMP_ALL_COUNTER_DATA request to monitor
 // then print reponse values

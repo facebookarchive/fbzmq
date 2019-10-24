@@ -13,7 +13,6 @@
 #include <fbzmq/async/ZmqEventLoop.h>
 #include <fbzmq/zmq/Zmq.h>
 
-using namespace folly;
 using namespace std;
 
 namespace fbzmq {

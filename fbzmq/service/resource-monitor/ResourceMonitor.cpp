@@ -6,7 +6,6 @@
  */
 
 #include <boost/filesystem.hpp>
-#include <syslog.h>
 
 #include <folly/Format.h>
 
