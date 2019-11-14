@@ -7,76 +7,10 @@
 
 #include <fbzmq/zmq/Socket.h>
 
-#ifdef FOLLY_HAS_COROUTINES
-#include <folly/experimental/coro/Baton.h>
-#endif
 #include <folly/fibers/EventBaseLoopController.h>
-#include <folly/io/async/EventHandler.h>
 #include <folly/net/NetworkSocket.h>
 
 namespace {
-
-#ifdef FOLLY_HAS_COROUTINES
-//
-// ZMQ exposes special FD that in a sense similar to eventFd. The ZMQ
-// library will post events on the FD making it readable or writable,
-// to indicate that corresponding ZMQ socket is ready for reading or writing.
-//
-// The following EventHandler grabs that special FD for ZMQ socket, then
-// adds it to EventBase for tracking. The event handler fires when socket
-// state changes.
-//
-// We integrate the handler with co-routines by posting on coro::baton when
-// the corresponding event happens.
-//
-class CoroZmqSocketReadyHandler : public folly::EventHandler {
- public:
-  CoroZmqSocketReadyHandler(
-      folly::EventBase* evb,
-      int fd,
-      // pointer to raw ZMQ socket, so we can zmq_getsockopt()
-      void* zmqRawSocket,
-      folly::coro::Baton& baton,
-      bool isRead)
-      : EventHandler(evb, folly::NetworkSocket::fromFd(fd)),
-        isRead_{isRead},
-        zmqRawSocket_{zmqRawSocket},
-        baton_{baton} {
-    registerHandler(
-        (isRead_ ? EventHandler::READ : EventHandler::WRITE) |
-        EventHandler::PERSIST);
-  }
-
-  // we set this if ZMQ layer passes us an error
-  int errorCode{0};
-
-  void
-  handlerReady(uint16_t events) noexcept override {
-    if (!(events & (EventHandler::READ | EventHandler::WRITE))) {
-      return;
-    }
-
-    uint32_t zmqEvents{0};
-    size_t zmqEventsLen = sizeof(zmqEvents);
-
-    errorCode =
-        zmq_getsockopt(zmqRawSocket_, ZMQ_EVENTS, &zmqEvents, &zmqEventsLen);
-
-    // if ready or got error, notify the sleepr
-    if ((errorCode != 0) ||
-        (zmqEvents & (isRead_ ? ZMQ_POLLIN : ZMQ_POLLOUT))) {
-      unregisterHandler();
-      baton_.get().post();
-    }
-    // otherwise, we keep handler registered
-  }
-
- private:
-  bool isRead_{true};
-  void* zmqRawSocket_{nullptr};
-  std::reference_wrapper<folly::coro::Baton> baton_;
-};
-#endif
 
 //
 // ZMQ exposes special FD that in a sense similar to eventFd. The ZMQ
@@ -147,14 +81,16 @@ SocketImpl::SocketImpl(
     Context& ctx,
     folly::Optional<IdentityString> identity,
     folly::Optional<KeyPair> keyPair,
-    NonblockingFlag isNonblocking)
+    NonblockingFlag isNonblocking,
+    folly::EventBase* evb)
     : SocketImpl(
           type,
           isServer,
           ctx.ptr_,
           std::move(identity),
           std::move(keyPair),
-          isNonblocking) {}
+          isNonblocking,
+          evb) {}
 
 SocketImpl::SocketImpl(
     int type,
@@ -162,16 +98,21 @@ SocketImpl::SocketImpl(
     void* ctxPtr,
     folly::Optional<IdentityString> identity,
     folly::Optional<KeyPair> keyPair,
-    NonblockingFlag isNonblocking)
-    : ptr_(zmq_socket(ctxPtr, type)),
+    NonblockingFlag isNonblocking,
+    folly::EventBase* evb)
+    : folly::EventHandler(),
+      ptr_(zmq_socket(ctxPtr, type)),
       ctxPtr_{ctxPtr},
-      keyPair_(std::move(keyPair)) {
+      keyPair_(std::move(keyPair)),
+      evb_(evb) {
   CHECK(ctxPtr);
   CHECK(ptr_) << Error();
 
   if (isNonblocking) {
     baseFlags_ |= ZMQ_DONTWAIT;
   }
+
+  initHandlerHelper();
 
   // Enable ZMQ_IPV6 by default on the sockets
   const int ipv6Enable = 1;
@@ -211,11 +152,14 @@ SocketImpl::~SocketImpl() noexcept {
 }
 
 SocketImpl::SocketImpl(SocketImpl&& other) noexcept
-    : baseFlags_(other.baseFlags_),
+    : folly::EventHandler(),
+      baseFlags_(other.baseFlags_),
       ptr_(other.ptr_),
       ctxPtr_(other.ctxPtr_),
-      keyPair_(std::move(other.keyPair_)) {
+      keyPair_(std::move(other.keyPair_)),
+      evb_(other.evb_) {
   other.ptr_ = nullptr;
+  initHandlerHelper();
 }
 
 SocketImpl&
@@ -224,10 +168,26 @@ SocketImpl::operator=(SocketImpl&& other) noexcept {
   ptr_ = other.ptr_;
   ctxPtr_ = other.ctxPtr_;
   keyPair_ = std::move(other.keyPair_);
-
+  evb_ = other.evb_;
   other.ptr_ = nullptr;
-
+  initHandlerHelper();
   return *this;
+}
+
+void
+SocketImpl::initHandlerHelper() noexcept {
+  if (not evb_) {
+    return;
+  }
+
+  CHECK(baseFlags_ & ZMQ_DONTWAIT)
+      << "Socket must be set in non-blocking mode for async read/writes";
+  // Initialize event handler
+  int socketFd{-1};
+  size_t fdLen = sizeof(socketFd);
+  const auto rc = zmq_getsockopt(ptr_, ZMQ_FD, &socketFd, &fdLen);
+  CHECK_EQ(0, rc) << "Can't get fd for socket. " << Error();
+  initHandler(evb_, folly::NetworkSocket::fromFd(socketFd));
 }
 
 folly::Expected<folly::Unit, Error>
@@ -296,6 +256,15 @@ SocketImpl::close() noexcept {
   if (not ptr_) {
     return;
   }
+  // Unregister handler from event base
+  unregisterHandler();
+
+  // Unblock reads if any
+#ifdef FOLLY_HAS_COROUTINES
+  coroReadBaton_.post();
+  coroWriteBaton_.post();
+#endif
+
   if (fiberBaton_) {
     // Notice this does not wake up blocking read (recvOne...)
     // when socket close happen
@@ -307,37 +276,48 @@ SocketImpl::close() noexcept {
 }
 
 #ifdef FOLLY_HAS_COROUTINES
-folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::coroWaitToRecv(folly::EventBase* evb) {
-  co_return co_await coroWaitImpl(evb, WaitReason::RECV);
-}
 
-folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::coroWaitToSend(folly::EventBase* evb) {
-  co_return co_await coroWaitImpl(evb, WaitReason::SEND);
-}
+folly::coro::Task<folly::Expected<Message, Error>>
+SocketImpl::recvOneCoro() {
+  CHECK(evb_);
 
-folly::coro::Task<folly::Expected<folly::Unit, Error>>
-SocketImpl::coroWaitImpl(folly::EventBase* evb, WaitReason reason) {
-  folly::coro::Baton baton;
-  int zmqFd{-1};
-  size_t fdLen = sizeof(zmqFd);
-
-  const auto rc = zmq_getsockopt(ptr_, ZMQ_FD, &zmqFd, &fdLen);
-
-  if (rc != 0) {
-    co_return folly::makeUnexpected(Error());
+  // Try immediate recv
+  auto ret = recvOne();
+  if (not ret.hasError() or ret.error().errNum != EAGAIN) {
+    co_return ret;
   }
 
-  CoroZmqSocketReadyHandler zh(
-      evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
-  // when zmqFd becomes readable, the event handler will post
-  // on the baton. Until then, this coroutine will be suspended
-  co_await baton;
-  if (zh.errorCode) {
-    co_return folly::makeUnexpected(Error(zh.errorCode));
+  // Error was EAGAIN - Wait for socket to become readable, then perform read
+  co_await coroWaitImpl(true /* isReadElseWrite */);
+  co_return recvOne();
+}
+
+folly::coro::Task<folly::Expected<size_t, Error>>
+SocketImpl::sendOneCoro(Message msg) {
+  CHECK(evb_);
+
+  // Wait for socket to become writable, then perform write
+  // NOTE: This is different from read path as we will always
+  // get write event on epoll if we haven't written before.
+  co_await coroWaitImpl(false /* isReadElseWrite */);
+  co_return sendOne(std::move(msg));
+}
+
+folly::coro::Task<void>
+SocketImpl::coroWaitImpl(bool isReadElseWrite) {
+  folly::coro::Baton* waitBaton{nullptr};
+  if (isReadElseWrite) {
+    waitBaton = &coroReadBaton_;
+    waitEvents_ |= EventHandler::READ;
+  } else {
+    waitBaton = &coroWriteBaton_;
+    waitEvents_ |= EventHandler::WRITE;
   }
-  co_return folly::unit;
+  CHECK(waitBaton);
+  waitBaton->reset(); // Reset baton
+  registerHandler(waitEvents_ | EventHandler::PERSIST);
+  co_await* waitBaton;
+  co_return;
 }
 #endif
 
@@ -382,6 +362,44 @@ SocketImpl::fiberWaitImpl(WaitReason reason) {
     return folly::makeUnexpected(Error(zh.errorCode));
   }
   return folly::unit;
+}
+
+void
+SocketImpl::handlerReady(uint16_t events) noexcept {
+  // Event must be of our interest
+  CHECK(events & EventHandler::READ_WRITE)
+      << "Received unknown event(s): " << events;
+
+  // Retrieve zmq events
+  uint32_t zmqEvents{0};
+  size_t zmqEventsLen = sizeof(zmqEvents);
+  auto err = zmq_getsockopt(ptr_, ZMQ_EVENTS, &zmqEvents, &zmqEventsLen);
+  CHECK_EQ(0, err) << "Got error while reading events from zmq socket";
+
+  const auto prevWaitEvents = waitEvents_;
+
+  // If read events, wake up reader
+  if ((waitEvents_ & EventHandler::READ) and (zmqEvents & ZMQ_POLLIN)) {
+    waitEvents_ &= ~EventHandler::READ; // Remove read event
+#ifdef FOLLY_HAS_COROUTINES
+    coroReadBaton_.post();
+#endif
+  }
+
+  // If write events, wake up writer
+  if ((waitEvents_ & EventHandler::WRITE) and (zmqEvents & ZMQ_POLLOUT)) {
+    waitEvents_ &= ~EventHandler::WRITE; // Remove write event
+#ifdef FOLLY_HAS_COROUTINES
+    coroWriteBaton_.post();
+#endif
+  }
+
+  // Un-register or update handler for waiting on remaining event
+  if (not waitEvents_) {
+    unregisterHandler();
+  } else if (waitEvents_ != prevWaitEvents) {
+    registerHandler(waitEvents_); // Update handler with new wait events
+  }
 }
 
 folly::Expected<size_t, Error>

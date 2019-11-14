@@ -17,7 +17,12 @@
 #include <folly/fibers/Baton.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/FiberManager.h>
+#include <folly/init/Init.h>
 #include <folly/io/async/AsyncTimeout.h>
+
+#ifdef FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Sleep.h>
+#endif
 
 using namespace std::chrono_literals;
 
@@ -184,10 +189,12 @@ TEST(Socket, SingleMessage) {
 
 #ifdef FOLLY_HAS_COROUTINES
 TEST(Socket, CoroSingleMessage) {
-  fbzmq::Context ctx;
-  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(ctx);
-  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(ctx);
   folly::EventBase evb;
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
 
   rep.bind(fbzmq::SocketUrl{"inproc://test"}).value();
   req.connect(fbzmq::SocketUrl{"inproc://test"}).value();
@@ -196,14 +203,13 @@ TEST(Socket, CoroSingleMessage) {
 
   auto writer = [&evb, &req, &str]() -> folly::coro::Task<folly::Unit> {
     auto msg = fbzmq::Message::from(str).value();
-    co_await req.coroWaitToSend(&evb);
-    req.sendOne(msg);
+    auto ret = co_await req.sendOneCoro(msg);
+    EXPECT_TRUE(ret.hasValue());
     co_return folly::unit;
   };
 
   auto reader = [&evb, &rep, &str]() -> folly::coro::Task<bool> {
-    co_await rep.coroWaitToRecv(&evb);
-    auto rcvd = rep.recvOne();
+    auto rcvd = co_await rep.recvOneCoro();
     co_return str == rcvd.value().read<std::string>().value();
   };
 
@@ -213,6 +219,60 @@ TEST(Socket, CoroSingleMessage) {
 
   EXPECT_TRUE(futReader.isReady());
   EXPECT_TRUE(futReader.value());
+}
+
+TEST(Socket, CoroPubSub) {
+  folly::EventBase evb;
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+  fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+
+  pub.bind(fbzmq::SocketUrl{"inproc://test"}).value();
+  sub.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+  sub.setSockOpt(ZMQ_SUBSCRIBE, "", 0).value();
+
+  const auto str = genRandomStr(1024);
+
+  auto writer = [&pub, &str]() -> folly::coro::Task<void> {
+    auto msg = fbzmq::Message::from(str).value();
+    size_t count{128};
+    while (count--) {
+      VLOG(1) << "Writer sending message " << count;
+      auto ret = co_await pub.sendOneCoro(msg);
+      EXPECT_TRUE(ret.hasValue());
+      co_await folly::coro::sleep(
+          std::chrono::milliseconds(folly::Random::rand32(0, 10)));
+    }
+    auto ret =
+        co_await pub.sendOneCoro(fbzmq::Message::from(std::string("")).value());
+    EXPECT_TRUE(ret.hasValue());
+    co_return;
+  };
+
+  auto reader = [&sub, &str]() -> folly::coro::Task<size_t> {
+    size_t count{0};
+    while (true) {
+      auto rcvd = co_await sub.recvOneCoro();
+      VLOG(1) << "Reader received message " << count;
+      auto data = rcvd.value().read<std::string>().value();
+      if (data.size() == 0) {
+        break;
+      }
+      ++count;
+      EXPECT_EQ(str, data);
+    }
+    co_return count;
+  };
+
+  auto futReader = reader().scheduleOn(&evb).start();
+  auto futWriter = writer().scheduleOn(&evb).start();
+  evb.loop();
+
+  EXPECT_TRUE(futReader.isReady());
+  EXPECT_EQ(128, futReader.value());
+  EXPECT_TRUE(futWriter.isReady());
 }
 #endif
 
@@ -1192,8 +1252,7 @@ int
 main(int argc, char* argv[]) {
   // Parse command line flags
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  google::InitGoogleLogging(argv[0]);
+  folly::init(&argc, &argv);
 
   // init sodium security library
   if (::sodium_init() == -1) {
