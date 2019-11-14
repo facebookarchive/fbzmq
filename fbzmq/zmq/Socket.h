@@ -146,8 +146,6 @@ class SocketImpl : public folly::EventHandler {
    */
   folly::coro::Task<folly::Expected<size_t, Error>> sendOneCoro(Message msg);
 #endif
-  folly::Expected<folly::Unit, Error> fiberWaitToRecv();
-  folly::Expected<folly::Unit, Error> fiberWaitToSend();
 
   /**
    * Send/receive methods
@@ -158,8 +156,8 @@ class SocketImpl : public folly::EventHandler {
    * socket operations mode. default timeout is indefinite
    */
   folly::Expected<Message, Error> recvOne(
-      folly::Optional<std::chrono::milliseconds> timeout = folly::none) const
-      noexcept;
+      folly::Optional<std::chrono::milliseconds> timeout =
+          folly::none) noexcept;
 
   /**
    * Static version for receiving multipart message. Will receive as many as
@@ -235,9 +233,9 @@ class SocketImpl : public folly::EventHandler {
    * the "more" flag, allowing for atomic message chaining
    */
 
-  folly::Expected<size_t, Error> sendOne(Message msg) const noexcept;
+  folly::Expected<size_t, Error> sendOne(Message msg) noexcept;
 
-  folly::Expected<size_t, Error> sendMore(Message msg) const noexcept;
+  folly::Expected<size_t, Error> sendMore(Message msg) noexcept;
 
   /**
    * Static version of sendMultiple. Ships messages passed as variadic parameter
@@ -246,7 +244,7 @@ class SocketImpl : public folly::EventHandler {
 
   template <bool hasMore = false, typename Msg>
   folly::Expected<size_t, Error>
-  sendMultiple(Msg msg) const {
+  sendMultiple(Msg msg) {
     if (hasMore) {
       return sendMore(msg);
     } else {
@@ -256,7 +254,7 @@ class SocketImpl : public folly::EventHandler {
 
   template <bool hasMore = false, typename First, typename... Rest>
   folly::Expected<size_t, Error>
-  sendMultiple(First msg, Rest... msgs) const {
+  sendMultiple(First msg, Rest... msgs) {
     auto res = sendMore(msg);
     if (not res.hasValue()) {
       return folly::makeUnexpected(res.error());
@@ -270,7 +268,7 @@ class SocketImpl : public folly::EventHandler {
 
   template <typename... Msgs>
   folly::Expected<size_t, Error>
-  sendMultipleMore(Msgs... msgs) const {
+  sendMultipleMore(Msgs... msgs) {
     return sendMultiple<true, Msgs...>(msgs...);
   }
 
@@ -279,7 +277,7 @@ class SocketImpl : public folly::EventHandler {
    * first error that occured.
    */
   folly::Expected<size_t, Error> sendMultiple(
-      std::vector<Message> const& msgs, bool hasMore = false) const;
+      std::vector<Message> const& msgs, bool hasMore = false);
 
   /**
    * Convenience methods to recv/send thrift objects as messages
@@ -289,8 +287,8 @@ class SocketImpl : public folly::EventHandler {
   folly::Expected<ThriftType, Error>
   recvThriftObj(
       Serializer& serializer,
-      folly::Optional<std::chrono::milliseconds> timeout = folly::none) const
-      noexcept {
+      folly::Optional<std::chrono::milliseconds> timeout =
+          folly::none) noexcept {
     auto maybeMessage = recvOne(timeout);
 
     return maybeMessage.hasError()
@@ -300,7 +298,7 @@ class SocketImpl : public folly::EventHandler {
 
   template <typename ThriftType, typename Serializer>
   folly::Expected<size_t, Error>
-  sendThriftObj(const ThriftType& obj, Serializer& serializer) const noexcept {
+  sendThriftObj(const ThriftType& obj, Serializer& serializer) noexcept {
     auto msg = Message::fromThriftObj(obj, serializer);
     return msg.hasError() ? folly::makeUnexpected(msg.error())
                           : sendOne(msg.value());
@@ -356,16 +354,12 @@ class SocketImpl : public folly::EventHandler {
  private:
   friend class fbzmq::SocketMonitor;
 
-  enum class WaitReason : uint8_t {
-    RECV,
-    SEND,
-  };
-
 #ifdef FOLLY_HAS_COROUTINES
-  folly::coro::Task<void> coroWaitImpl(bool isReadElseWrite);
+  folly::coro::Task<void> coroWaitImpl(bool isReadElseWrite) noexcept;
 #endif
-
-  folly::Expected<folly::Unit, Error> fiberWaitImpl(WaitReason reason);
+  bool fiberWaitImpl(
+      bool isReadElseWrite,
+      folly::Optional<std::chrono::milliseconds> timeout) noexcept;
 
   /**
    * Utility function to initialize handler
@@ -380,12 +374,14 @@ class SocketImpl : public folly::EventHandler {
   /**
    * low-level send method
    */
-  folly::Expected<size_t, Error> send(Message msg, int flags) const noexcept;
+  folly::Expected<size_t, Error> send(Message msg, int flags) noexcept;
 
   /**
    * low-level recv method
    */
-  folly::Expected<Message, Error> recv(int flags) const noexcept;
+  folly::Expected<Message, Error> recvAsync(
+      folly::Optional<std::chrono::milliseconds> timeout) noexcept;
+  folly::Expected<Message, Error> recv(int flags) noexcept;
 
   /**
    * Crypto stuff
@@ -404,6 +400,7 @@ class SocketImpl : public folly::EventHandler {
 
   // used to store ZMQ_DONTWAIT
   int baseFlags_{0};
+  bool isSendingMore_{false};
 
   // pointer to socket object. alas, this can not be const
   // since we update it in move constructor
@@ -412,8 +409,6 @@ class SocketImpl : public folly::EventHandler {
   // point to the raw context we run under. mainly needed to pass to
   // SocketMonitor object
   void* ctxPtr_{nullptr};
-
-  folly::fibers::Baton* fiberBaton_{nullptr};
 
   // the crypto key pair.
   folly::Optional<KeyPair> keyPair_;
@@ -437,6 +432,9 @@ class SocketImpl : public folly::EventHandler {
   folly::coro::Baton coroReadBaton_;
   folly::coro::Baton coroWriteBaton_;
 #endif
+  // Wait synchronization primitive for socket events on a folly::Fiber
+  folly::fibers::Baton fiberReadBaton_;
+  folly::fibers::Baton fiberWriteBaton_;
 };
 
 /**

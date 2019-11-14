@@ -279,10 +279,12 @@ TEST(Socket, CoroPubSub) {
 TEST(Socket, FiberSingleMessage) {
   using namespace folly::fibers;
 
-  fbzmq::Context ctx;
-  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(ctx);
-  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(ctx);
   folly::EventBase evb;
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> req(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+  fbzmq::Socket<ZMQ_REP, fbzmq::ZMQ_SERVER> rep(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
 
   rep.bind(fbzmq::SocketUrl{"inproc://test"}).value();
   req.connect(fbzmq::SocketUrl{"inproc://test"}).value();
@@ -297,13 +299,11 @@ TEST(Socket, FiberSingleMessage) {
   auto sender = fm->addTaskFuture([&req, &str]() {
     VLOG(1) << "Start sender fiber";
     auto msg = fbzmq::Message::from(str).value();
-    req.fiberWaitToSend();
     req.sendOne(msg);
   });
 
   auto receiver = fm->addTaskFuture([&rep, &str]() {
     VLOG(1) << "Start receiver fiber";
-    rep.fiberWaitToRecv();
     auto rcvd = rep.recvOne();
     EXPECT_EQ(str, rcvd.value().read<std::string>().value());
   });
@@ -318,15 +318,15 @@ TEST(Socket, FiberSingleMessage) {
 TEST(Socket, FiberPubSubMessage) {
   using namespace folly::fibers;
 
+  folly::EventBase evb;
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
-      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true}, &evb);
   fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub(
-      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
-  folly::EventBase evb;
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true}, &evb);
 
-  pub.bind(fbzmq::SocketUrl{"ipc:///tmp/test"}).value();
-  sub.connect(fbzmq::SocketUrl{"ipc:///tmp/test"}).value();
+  pub.bind(fbzmq::SocketUrl{"inproc:///tmp/test"}).value();
+  sub.connect(fbzmq::SocketUrl{"inproc:///tmp/test"}).value();
   sub.setSockOpt(ZMQ_SUBSCRIBE, "", 0).value();
 
   auto fm = std::make_unique<FiberManager>(
@@ -337,37 +337,42 @@ TEST(Socket, FiberPubSubMessage) {
   const auto str = genRandomStr(1024);
 
   // receiver needs to drain all messages before put back to wait
-  auto receiver = fm->addTaskFuture([&sub]() {
+  auto receiver = fm->addTaskFuture([&sub]() noexcept {
+    LOG(INFO) << "Receiver starting";
     auto rcvdMsgCnt = 0;
     while (true) {
-      sub.fiberWaitToRecv();
-      auto rcvd = sub.drain().value();
+      auto rcvd = sub.recvOne();
       // if sender sends too fast we will receive >1 messages here
-      rcvdMsgCnt += rcvd.size();
-      VLOG(1) << "Receiver got " << rcvdMsgCnt << " msgs";
+      ++rcvdMsgCnt;
+      VLOG(1) << "Receiver got msg " << rcvdMsgCnt;
       if (rcvdMsgCnt == 1024) {
         break;
       }
     }
+    LOG(INFO) << "Receiver terminating";
     SUCCEED();
   });
 
-  auto sender = fm->addTaskFuture([&pub, &str, &evb]() {
+  auto sender = fm->addTaskFuture([&pub, &str, &evb]() noexcept {
+    LOG(INFO) << "Sender starting";
     for (int i = 0; i < 1024; i++) {
       auto msg = fbzmq::Message::from(str).value();
-      pub.fiberWaitToSend();
+      VLOG(1) << "Sender sending msg " << (i + 1);
       pub.sendOne(msg);
       // random wait before send next msg
       folly::fibers::Baton bt;
       auto timeout = folly::AsyncTimeout::schedule(
-          std::chrono::milliseconds(folly::Random::rand32(0, 20)),
+          std::chrono::milliseconds(folly::Random::rand32(0, 10)),
           evb,
           [&bt]() noexcept { bt.post(); });
       bt.wait();
+      LOG(INFO) << "Sender terminating";
     }
   });
 
+  LOG(INFO) << "Starting eventbase loop";
   evb.loop();
+  LOG(INFO) << "eventbase loop terminated";
 
   // wait for fiber to finish
   std::move(sender).get();
@@ -377,10 +382,10 @@ TEST(Socket, FiberPubSubMessage) {
 TEST(Socket, FiberSubSocketClose) {
   using namespace folly::fibers;
 
+  folly::EventBase evb;
   fbzmq::Context ctx;
   fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
-      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true});
-  folly::EventBase evb;
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true}, &evb);
 
   sub.connect(fbzmq::SocketUrl{"inproc://test"}).value();
 
@@ -390,10 +395,8 @@ TEST(Socket, FiberSubSocketClose) {
       .attachEventBase(evb);
 
   // both will block on waitToRead
-  auto client = fm->addTaskFuture([&sub]() {
-    sub.fiberWaitToRecv();
-    EXPECT_TRUE(sub.recvOne().hasError());
-  });
+  auto client =
+      fm->addTaskFuture([&sub]() { EXPECT_TRUE(sub.recvOne().hasError()); });
 
   fm->addTask([&sub, &evb]() {
     // wait for 50ms before close the socket
@@ -401,8 +404,117 @@ TEST(Socket, FiberSubSocketClose) {
     auto timeout = folly::AsyncTimeout::schedule(
         std::chrono::milliseconds(50), evb, [&bt]() noexcept { bt.post(); });
     bt.wait();
-    // close both sockets
+    // close socket. Reader will get unblocked
     sub.close();
+  });
+
+  evb.loop();
+
+  // wait for fiber to finish
+  std::move(client).get();
+}
+
+TEST(Socket, FiberSendRecvMultiple) {
+  using namespace folly::fibers;
+
+  folly::EventBase evb;
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_PUB, fbzmq::ZMQ_SERVER> pub(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+  fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
+      ctx, folly::none, folly::none, NonblockingFlag{true}, &evb);
+
+  pub.bind(fbzmq::SocketUrl{"inproc://test"}).value();
+  sub.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+  sub.setSockOpt(ZMQ_SUBSCRIBE, "", 0).value();
+
+  auto fm = std::make_unique<FiberManager>(
+      std::make_unique<EventBaseLoopController>());
+  static_cast<EventBaseLoopController&>(fm->loopController())
+      .attachEventBase(evb);
+
+  auto sender = fm->addTaskFuture([&evb, &pub]() {
+    VLOG(1) << "Start sender fiber";
+    std::vector<fbzmq::Message> msgs{
+        fbzmq::Message::from(genRandomStr(1024)).value(),
+        fbzmq::Message::from(genRandomStr(1024)).value(),
+        fbzmq::Message::from(genRandomStr(1024)).value(),
+        fbzmq::Message::from(genRandomStr(1024)).value()};
+
+    // Templatized send
+    {
+      LOG(INFO) << "Sending multiple messages as variadic args";
+      auto ret = pub.sendMultiple(msgs.at(0), msgs.at(1), msgs.at(2));
+      EXPECT_TRUE(ret.hasValue());
+    }
+
+    // Wait
+    LOG(INFO) << "Sender sleeping for 100ms";
+    folly::fibers::Baton bt;
+    auto timeout = folly::AsyncTimeout::schedule(
+        std::chrono::milliseconds(100), evb, [&bt]() noexcept { bt.post(); });
+    bt.wait();
+
+    // Send multiple with vector
+    {
+      LOG(INFO) << "Sending multiple messages as vector - continued";
+      auto ret = pub.sendMultiple(msgs, true /* hasMore */);
+      EXPECT_TRUE(ret.hasValue());
+    }
+    {
+      LOG(INFO) << "Sending multiple messages as vector - done";
+      auto ret = pub.sendMultiple(msgs, false /* hasMore */);
+      EXPECT_TRUE(ret.hasValue());
+    }
+    LOG(INFO) << "Sender terminating";
+  });
+
+  auto receiver = fm->addTaskFuture([&sub]() {
+    VLOG(1) << "Start receiver fiber";
+
+    fbzmq::Message msg1, msg2, msg3;
+    auto ret = sub.recvMultiple(msg1, msg2, msg3);
+    LOG(INFO) << "Received messages with variadic args";
+    EXPECT_TRUE(ret.hasValue());
+    EXPECT_EQ(1024, msg1.size());
+    EXPECT_EQ(1024, msg2.size());
+    EXPECT_EQ(1024, msg3.size());
+
+    // NOTE: We will receive all 8 parts in a single shot
+    auto msgs = sub.recvMultiple();
+    LOG(INFO) << "Received messages with vector list";
+    ASSERT_TRUE(msgs.hasValue());
+    EXPECT_EQ(8, msgs.value().size());
+
+    LOG(INFO) << "Receiver terminating";
+  });
+
+  evb.loop();
+
+  // wait for fiber to finish
+  std::move(sender).get();
+  std::move(receiver).get();
+}
+
+TEST(Socket, FiberRecvTimeout) {
+  using namespace folly::fibers;
+
+  folly::EventBase evb;
+  auto fm = std::make_unique<FiberManager>(
+      std::make_unique<EventBaseLoopController>());
+  static_cast<EventBaseLoopController&>(fm->loopController())
+      .attachEventBase(evb);
+
+  fbzmq::Context ctx;
+  fbzmq::Socket<ZMQ_SUB, fbzmq::ZMQ_CLIENT> sub(
+      ctx, folly::none, folly::none, fbzmq::NonblockingFlag{true}, &evb);
+  sub.connect(fbzmq::SocketUrl{"inproc://test"}).value();
+
+  // both will block on waitToRead
+  auto client = fm->addTaskFuture([&sub]() {
+    auto recvd = sub.recvOne(std::chrono::milliseconds(100));
+    ASSERT_TRUE(recvd.hasError());
+    EXPECT_EQ(EAGAIN, recvd.error().errNum);
   });
 
   evb.loop();

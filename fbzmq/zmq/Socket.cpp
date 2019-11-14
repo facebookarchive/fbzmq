@@ -10,68 +10,6 @@
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/net/NetworkSocket.h>
 
-namespace {
-
-//
-// ZMQ exposes special FD that in a sense similar to eventFd. The ZMQ
-// library will post events on the FD making it readable or writable,
-// to indicate that corresponding ZMQ socket is ready for reading or writing.
-//
-// The following EventHandler grabs that special FD for ZMQ socket, then
-// adds it to EventBase for tracking. The event handler fires when socket
-// state changes.
-//
-// We integrate the handler with folly::dibers by posting on fibers::baton when
-// the corresponding event happens.
-//
-class FiberZmqSocketReadyHandler : public folly::EventHandler {
- public:
-  FiberZmqSocketReadyHandler(
-      folly::EventBase* evb,
-      int fd,
-      // pointer to raw ZMQ socket, so we can zmq_getsockopt()
-      void* zmqRawSocket,
-      folly::fibers::Baton& baton,
-      bool isRead)
-      : EventHandler(evb, folly::NetworkSocket::fromFd(fd)),
-        isRead_{isRead},
-        zmqRawSocket_{zmqRawSocket},
-        baton_{baton} {
-    registerHandler(
-        (isRead_ ? EventHandler::READ : EventHandler::WRITE) |
-        EventHandler::PERSIST);
-  }
-
-  // we set this if ZMQ layer passes us an error
-  int errorCode{0};
-
-  void
-  handlerReady(uint16_t events) noexcept override {
-    if (!(events & (EventHandler::READ | EventHandler::WRITE))) {
-      return;
-    }
-
-    uint32_t zmqEvents{0};
-    size_t zmqEventsLen = sizeof(zmqEvents);
-    errorCode =
-        zmq_getsockopt(zmqRawSocket_, ZMQ_EVENTS, &zmqEvents, &zmqEventsLen);
-    // if ready or got error, notify the sleepr
-    if ((errorCode != 0) ||
-        (zmqEvents & (isRead_ ? ZMQ_POLLIN : ZMQ_POLLOUT))) {
-      unregisterHandler();
-      baton_.get().post();
-    }
-    // otherwise, we keep handler registered
-  }
-
- private:
-  bool isRead_{true};
-  void* zmqRawSocket_{nullptr};
-  std::reference_wrapper<folly::fibers::Baton> baton_;
-};
-
-} // namespace
-
 namespace fbzmq {
 namespace detail {
 
@@ -259,17 +197,14 @@ SocketImpl::close() noexcept {
   // Unregister handler from event base
   unregisterHandler();
 
-  // Unblock reads if any
+  // Unblock awaited reads or writes if any
 #ifdef FOLLY_HAS_COROUTINES
   coroReadBaton_.post();
   coroWriteBaton_.post();
 #endif
+  fiberReadBaton_.post();
+  fiberWriteBaton_.post();
 
-  if (fiberBaton_) {
-    // Notice this does not wake up blocking read (recvOne...)
-    // when socket close happen
-    fiberBaton_->post();
-  }
   const int rc = zmq_close(ptr_);
   CHECK_EQ(0, rc) << zmq_strerror(zmq_errno());
   ptr_ = nullptr;
@@ -282,14 +217,14 @@ SocketImpl::recvOneCoro() {
   CHECK(evb_);
 
   // Try immediate recv
-  auto ret = recvOne();
+  auto ret = recv(baseFlags_);
   if (not ret.hasError() or ret.error().errNum != EAGAIN) {
     co_return ret;
   }
 
   // Error was EAGAIN - Wait for socket to become readable, then perform read
   co_await coroWaitImpl(true /* isReadElseWrite */);
-  co_return recvOne();
+  co_return recv(baseFlags_);
 }
 
 folly::coro::Task<folly::Expected<size_t, Error>>
@@ -300,11 +235,11 @@ SocketImpl::sendOneCoro(Message msg) {
   // NOTE: This is different from read path as we will always
   // get write event on epoll if we haven't written before.
   co_await coroWaitImpl(false /* isReadElseWrite */);
-  co_return sendOne(std::move(msg));
+  co_return send(std::move(msg), baseFlags_);
 }
 
 folly::coro::Task<void>
-SocketImpl::coroWaitImpl(bool isReadElseWrite) {
+SocketImpl::coroWaitImpl(bool isReadElseWrite) noexcept {
   folly::coro::Baton* waitBaton{nullptr};
   if (isReadElseWrite) {
     waitBaton = &coroReadBaton_;
@@ -321,47 +256,38 @@ SocketImpl::coroWaitImpl(bool isReadElseWrite) {
 }
 #endif
 
-folly::Expected<folly::Unit, Error>
-SocketImpl::fiberWaitToRecv() {
-  return fiberWaitImpl(WaitReason::RECV);
-}
-
-folly::Expected<folly::Unit, Error>
-SocketImpl::fiberWaitToSend() {
-  return fiberWaitImpl(WaitReason::SEND);
-}
-
-folly::Expected<folly::Unit, Error>
-SocketImpl::fiberWaitImpl(WaitReason reason) {
+bool
+SocketImpl::fiberWaitImpl(
+    bool isReadElseWrite,
+    folly::Optional<std::chrono::milliseconds> timeout) noexcept {
   CHECK(folly::fibers::onFiber()) << "Not on fiber!";
 
-  auto& fm = folly::fibers::FiberManager::getFiberManager();
-  auto& lc =
-      static_cast<folly::fibers::EventBaseLoopController&>(fm.loopController());
-  auto evb = &lc.getEventBase()->getEventBase();
-
-  folly::fibers::Baton baton;
-  fiberBaton_ = &baton;
-  int zmqFd{-1};
-  size_t fdLen = sizeof(zmqFd);
-
-  const auto rc = zmq_getsockopt(ptr_, ZMQ_FD, &zmqFd, &fdLen);
-
-  if (rc != 0) {
-    return folly::makeUnexpected(Error());
+  folly::fibers::Baton* waitBaton{&fiberReadBaton_};
+  uint16_t waitEvent{EventHandler::READ};
+  if (not isReadElseWrite) {
+    waitBaton = &fiberWriteBaton_;
+    waitEvent = EventHandler::WRITE;
   }
-
-  FiberZmqSocketReadyHandler zh(
-      evb, zmqFd, ptr_, baton, reason == WaitReason::RECV);
-
-  // when zmqFd becomes readable, the event handler will post
-  // on the baton. Until then, this coroutine will be suspended
-  baton.wait();
-  fiberBaton_ = nullptr;
-  if (zh.errorCode) {
-    return folly::makeUnexpected(Error(zh.errorCode));
+  CHECK(waitBaton);
+  waitEvents_ |= waitEvent;
+  waitBaton->reset(); // Reset baton
+  registerHandler(waitEvents_ | EventHandler::PERSIST);
+  if (timeout.hasValue()) {
+    const auto hasEvent = waitBaton->timed_wait(timeout.value());
+    if (not hasEvent) {
+      // Unregister wait-event
+      waitEvents_ &= ~waitEvent;
+      if (not waitEvents_) {
+        unregisterHandler();
+      } else {
+        registerHandler(waitEvents_);
+      }
+      return false;
+    }
+  } else {
+    waitBaton->wait();
   }
-  return folly::unit;
+  return true;
 }
 
 void
@@ -381,6 +307,7 @@ SocketImpl::handlerReady(uint16_t events) noexcept {
   // If read events, wake up reader
   if ((waitEvents_ & EventHandler::READ) and (zmqEvents & ZMQ_POLLIN)) {
     waitEvents_ &= ~EventHandler::READ; // Remove read event
+    fiberReadBaton_.post();
 #ifdef FOLLY_HAS_COROUTINES
     coroReadBaton_.post();
 #endif
@@ -389,6 +316,7 @@ SocketImpl::handlerReady(uint16_t events) noexcept {
   // If write events, wake up writer
   if ((waitEvents_ & EventHandler::WRITE) and (zmqEvents & ZMQ_POLLOUT)) {
     waitEvents_ &= ~EventHandler::WRITE; // Remove write event
+    fiberWriteBaton_.post();
 #ifdef FOLLY_HAS_COROUTINES
     coroWriteBaton_.post();
 #endif
@@ -403,17 +331,25 @@ SocketImpl::handlerReady(uint16_t events) noexcept {
 }
 
 folly::Expected<size_t, Error>
-SocketImpl::sendOne(Message msg) const noexcept {
+SocketImpl::sendOne(Message msg) noexcept {
+  // Wait only if sending first part and evb is present
+  if (not isSendingMore_ && evb_) {
+    fiberWaitImpl(false /* isReadElseWrite */, folly::none);
+  }
   return send(std::move(msg), baseFlags_);
 }
 
 folly::Expected<size_t, Error>
-SocketImpl::sendMore(Message msg) const noexcept {
+SocketImpl::sendMore(Message msg) noexcept {
+  // Wait only if sending first part and evb is present
+  if (not isSendingMore_ && evb_) {
+    fiberWaitImpl(false /* isReadElseWrite */, folly::none);
+  }
   return send(std::move(msg), baseFlags_ | ZMQ_SNDMORE);
 }
 
 folly::Expected<size_t, Error>
-SocketImpl::sendMultiple(std::vector<Message> const& msgs, bool hasMore) const {
+SocketImpl::sendMultiple(std::vector<Message> const& msgs, bool hasMore) {
   size_t size{0};
   if (msgs.empty()) {
     return 0;
@@ -435,10 +371,28 @@ SocketImpl::sendMultiple(std::vector<Message> const& msgs, bool hasMore) const {
 }
 
 folly::Expected<Message, Error>
+SocketImpl::recvAsync(
+    folly::Optional<std::chrono::milliseconds> timeout) noexcept {
+  auto ret = recv(baseFlags_);
+  if (not ret.hasError() or ret.error().errNum != EAGAIN) {
+    return ret;
+  }
+
+  // Error was EAGAIN - Wait for socket to become readable, then perform read
+  if (not fiberWaitImpl(true /* isReadElseWrite */, timeout)) {
+    return folly::makeUnexpected(Error(EAGAIN, "fiber recv timeout"));
+  }
+  return recv(baseFlags_);
+}
+
+folly::Expected<Message, Error>
 SocketImpl::recvOne(folly::Optional<std::chrono::milliseconds>
-                        timeout /* = folly::none */) const noexcept {
+                        timeout /* = folly::none */) noexcept {
   // ignore timeout if non-blocking
   if (baseFlags_ & ZMQ_DONTWAIT) {
+    if (evb_) {
+      return recvAsync(timeout);
+    }
     return recv(baseFlags_);
   }
 
@@ -561,7 +515,8 @@ SocketImpl::disconnect(SocketUrl addr) noexcept {
 }
 
 folly::Expected<size_t, Error>
-SocketImpl::send(Message msg, int flags) const noexcept {
+SocketImpl::send(Message msg, int flags) noexcept {
+  isSendingMore_ = flags & ZMQ_SNDMORE;
   while (true) {
     const int n = zmq_msg_send(&(msg.msg_), ptr_, flags);
     if (n >= 0) {
@@ -590,7 +545,7 @@ SocketImpl::delServerKey(SocketUrl server) noexcept {
 }
 
 folly::Expected<Message, Error>
-SocketImpl::recv(int flags) const noexcept {
+SocketImpl::recv(int flags) noexcept {
   Message msg;
   while (true) {
     const int n = zmq_msg_recv(&(msg.msg_), ptr_, flags);
