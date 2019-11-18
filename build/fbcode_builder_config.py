@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import specs.fbthrift as fbthrift
 import specs.fbzmq as fbzmq
+import specs.fmt as fmt
 import specs.folly as folly
 import specs.gmock as gmock
 import specs.sigar as sigar
@@ -22,7 +23,7 @@ from shell_quoting import ShellQuoted
 
 def fbcode_builder_spec(builder):
     return {
-        "depends_on": [folly, fbthrift, gmock, sigar, fbzmq],
+        "depends_on": [fmt, folly, fbthrift, gmock, sigar, fbzmq],
         "steps": [
             # fbzmq build dir will be the last workdir
             builder.step("Run fbzmq tests", [builder.run(ShellQuoted("make test"))])
