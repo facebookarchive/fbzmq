@@ -9,6 +9,8 @@
 
 #include <fbzmq/async/ZmqEventLoop.h>
 
+#include <folly/executors/ScheduledExecutor.h>
+
 namespace fbzmq {
 
 /**
@@ -28,7 +30,7 @@ class ZmqTimeout {
    * be invoked in eventLoop's main loop. Sub-class must implement
    * `timeoutExpired`.
    */
-  explicit ZmqTimeout(ZmqEventLoop* eventLoop);
+  explicit ZmqTimeout(folly::ScheduledExecutor* eventLoop);
 
   /**
    * This construct and returns you the ZmqTimeout with specified function as
@@ -42,7 +44,7 @@ class ZmqTimeout {
    *  timeout_->schedulePeriodic(std::chrono::seconds(1));
    */
   static std::unique_ptr<ZmqTimeout> make(
-      ZmqEventLoop* eventLoop, TimeoutCallback callback);
+      folly::ScheduledExecutor* eventLoop, TimeoutCallback callback);
 
   /**
    * Timeout will be automatically cancelled if it is running.
@@ -97,6 +99,11 @@ class ZmqTimeout {
 
  private:
   /**
+   * Helper function to attach timeout
+   */
+  void scheduleTimeoutHelper() noexcept;
+
+  /**
    * Helper function which calls timeoutExpired.
    */
   void timeoutExpiredHelper() noexcept;
@@ -107,14 +114,14 @@ class ZmqTimeout {
     PERIODIC = 3,
   };
 
-  // ZmqEventLoop instance in which to run/schedule the timeouts
-  ZmqEventLoop* eventLoop_{nullptr};
+  // ScheduledExecutor instance in which to run/schedule the timeouts
+  folly::ScheduledExecutor* eventLoop_{nullptr};
 
   // Current timeout state
   TimeoutState state_{TimeoutState::NONE};
 
   // Token associated with the scheduled timeout.
-  int64_t token_{0};
+  std::shared_ptr<size_t> token_;
 
   // Timeout duration associated with periodic timeout
   std::chrono::milliseconds timeoutPeriod_{0};

@@ -19,6 +19,7 @@
 #include <boost/serialization/strong_typedef.hpp>
 #include <folly/Function.h>
 #include <folly/MPMCQueue.h>
+#include <folly/executors/ScheduledExecutor.h>
 #include <glog/logging.h>
 #include <zmq.h>
 
@@ -27,7 +28,7 @@
 namespace fbzmq {
 
 using SocketCallback = folly::Function<void(int revents) noexcept>;
-using TimeoutCallback = folly::Function<void(void) noexcept>;
+using TimeoutCallback = folly::Function<void(void)>;
 
 BOOST_STRONG_TYPEDEF(uintptr_t, RawZmqSocketPtr)
 
@@ -60,7 +61,7 @@ BOOST_STRONG_TYPEDEF(uintptr_t, RawZmqSocketPtr)
  * a looper (just like folly::EventBase). Look into `examples` to get started.
  *
  */
-class ZmqEventLoop : public Runnable {
+class ZmqEventLoop : public Runnable, public folly::ScheduledExecutor {
  public:
   /**
    * ZmqEventLoop constructor
@@ -193,6 +194,20 @@ class ZmqEventLoop : public Runnable {
    *           false if timeout already got executed.
    */
   bool cancelTimeout(int64_t timeoutId);
+
+  /**
+   * ScheduledExecutor & Executor interface
+   */
+  void
+  add(TimeoutCallback callback) override {
+    runImmediatelyOrInEventLoop(std::move(callback));
+  }
+  void
+  scheduleAt(
+      TimeoutCallback&& callback,
+      std::chrono::steady_clock::time_point const& ts) override {
+    scheduleTimeoutAt(ts, std::move(callback));
+  }
 
   /**
    * Special method to enqueue function calls into ZmqEventLoop's thread.
