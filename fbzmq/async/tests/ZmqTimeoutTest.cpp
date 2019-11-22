@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <folly/synchronization/Baton.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
@@ -15,78 +16,54 @@ namespace fbzmq {
 
 using namespace std::chrono_literals;
 
-namespace {
-
-class TestThread final : public ZmqEventLoop {
- public:
-  TestThread() {
-    prepare();
-  }
-
-  int
-  getCount() {
-    return count_.load(std::memory_order_relaxed);
-  }
-
- private:
-  void
-  prepare() {
-    auto start = std::chrono::steady_clock::now();
-
-    // Schedule first timeout
-    timeout_ = ZmqTimeout::make(this, [&, start]() noexcept {
-      auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::steady_clock::now() - start);
-      LOG(INFO) << "Executing callback after " << diff.count() << "ms.";
-
-      // fetch_add returns previous value
-      int oldCount = count_.fetch_add(1, std::memory_order_relaxed);
-
-      EXPECT_EQ(1, getNumPendingTimeouts());
-
-      // Destruct the timeout on 4th time, this will cancel it.
-      if (oldCount == 3) {
-        timeout_.reset();
-        EXPECT_EQ(1, getNumPendingTimeouts()); // timeout still remains
-      }
-    });
-
-    EXPECT_EQ(0, getNumPendingTimeouts());
-    EXPECT_NO_THROW(timeout_->cancelTimeout());
-    timeout_->scheduleTimeout(100ms, true /* periodic */);
-    EXPECT_TRUE(timeout_->isScheduled());
-    // can schedule twice with no issue
-    timeout_->scheduleTimeout(100ms, true /* periodic */);
-    EXPECT_TRUE(timeout_->isScheduled());
-    EXPECT_TRUE(timeout_->isPeriodic());
-    EXPECT_LE(1, getNumPendingTimeouts());
-  }
-
-  std::atomic<int> count_{0};
-
-  std::unique_ptr<ZmqTimeout> timeout_;
-};
-
-} // namespace
-
 TEST(ZmqTimeoutTest, TimeoutTest) {
-  TestThread testThread;
-  EXPECT_EQ(0, testThread.getCount());
+  fbzmq::ZmqEventLoop evl;
 
-  std::thread thread([&]() {
+  auto start = std::chrono::steady_clock::now();
+  size_t count{0};
+  folly::Baton<> waitBaton;
+
+  // Schedule first timeout
+  auto timeout = ZmqTimeout::make(&evl, [&]() noexcept {
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start);
+    LOG(INFO) << "Executing callback after " << diff.count() << "ms.";
+
+    // fetch_add returns previous value
+    ++count;
+    if (count >= 4) {
+      waitBaton.post();
+    }
+
+    EXPECT_EQ(1, evl.getNumPendingTimeouts());
+  });
+
+  EXPECT_EQ(0, evl.getNumPendingTimeouts());
+  EXPECT_NO_THROW(timeout->cancelTimeout());
+  timeout->scheduleTimeout(100ms, true /* periodic */);
+  EXPECT_TRUE(timeout->isScheduled());
+
+  // can schedule twice with no issue
+  timeout->scheduleTimeout(100ms, true /* periodic */);
+  EXPECT_TRUE(timeout->isScheduled());
+  EXPECT_TRUE(timeout->isPeriodic());
+  EXPECT_LE(1, evl.getNumPendingTimeouts());
+
+  // Start event loop
+  std::thread evlThread([&]() {
     LOG(INFO) << "Starting zmq thread.";
-    testThread.run();
+    evl.run();
     LOG(INFO) << "Stopping zmq thread.";
   });
 
-  // Busy spin until callback has been executed 4 times
-  while (testThread.getCount() != 4) {
-    std::this_thread::yield();
-  }
+  // Wait for completion
+  waitBaton.wait();
+  timeout.reset();
+  EXPECT_EQ(4, count);
 
   // Cleanup
-  testThread.stop();
-  thread.join();
+  evl.stop();
+  evlThread.join();
 }
 
 } // namespace fbzmq
