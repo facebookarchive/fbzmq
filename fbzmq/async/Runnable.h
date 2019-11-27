@@ -32,13 +32,13 @@ class Runnable {
   /**
    * Busy-spin or wait until thread is running.
    */
-  virtual void waitUntilRunning() const = 0;
+  virtual void waitUntilRunning() = 0;
 
   /**
    * Busy-spin or wait until thread is stopped. Useful when you issued a stop
    * signal and want to wait before proceeding.
    */
-  virtual void waitUntilStopped() const = 0;
+  virtual void waitUntilStopped() = 0;
 };
 
 } // namespace fbzmq

@@ -117,7 +117,7 @@ class ZmqEventLoop : public Runnable, public folly::ScheduledExecutor {
    * threads to synchronize with this thread's main loop
    */
   void
-  waitUntilRunning() const override {
+  waitUntilRunning() override {
     while (!isRunning()) {
       std::this_thread::yield();
     }
@@ -127,7 +127,7 @@ class ZmqEventLoop : public Runnable, public folly::ScheduledExecutor {
    * Similarly, busy spin until this thread has stopped the main loop
    */
   void
-  waitUntilStopped() const override {
+  waitUntilStopped() override {
     while (isRunning()) {
       std::this_thread::yield();
     }
