@@ -61,7 +61,7 @@ BOOST_STRONG_TYPEDEF(uintptr_t, RawZmqSocketPtr)
  * a looper (just like folly::EventBase). Look into `examples` to get started.
  *
  */
-class ZmqEventLoop : public Runnable, public folly::ScheduledExecutor {
+class ZmqEventLoop : public virtual Runnable, public folly::ScheduledExecutor {
  public:
   /**
    * ZmqEventLoop constructor
