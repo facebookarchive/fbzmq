@@ -12,7 +12,7 @@
 #include <boost/serialization/strong_typedef.hpp>
 
 #include <folly/Expected.h>
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Task.h>
 #endif
@@ -131,7 +131,7 @@ class SocketImpl : public folly::EventHandler {
    */
   void close() noexcept;
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
   /**
    * Receive message in a co-routine. Receive message immediately if one
    * available. If not suspends current coroutine using the EventLoop as
@@ -354,7 +354,7 @@ class SocketImpl : public folly::EventHandler {
  private:
   friend class fbzmq::SocketMonitor;
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
   folly::coro::Task<void> coroWaitImpl(bool isReadElseWrite) noexcept;
 #endif
   bool fiberWaitImpl(
@@ -427,7 +427,7 @@ class SocketImpl : public folly::EventHandler {
   // Current event of interest (EventHandler::READ, EventHandler::WRITE or both)
   uint16_t waitEvents_{0};
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
   // Wait synchronization primitive for socket events on a co-routine
   folly::coro::Baton coroReadBaton_;
   folly::coro::Baton coroWriteBaton_;

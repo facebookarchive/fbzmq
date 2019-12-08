@@ -198,7 +198,7 @@ SocketImpl::close() noexcept {
   unregisterHandler();
 
   // Unblock awaited reads or writes if any
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
   coroReadBaton_.post();
   coroWriteBaton_.post();
 #endif
@@ -210,7 +210,7 @@ SocketImpl::close() noexcept {
   ptr_ = nullptr;
 }
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
 
 folly::coro::Task<folly::Expected<Message, Error>>
 SocketImpl::recvOneCoro() {
@@ -308,7 +308,7 @@ SocketImpl::handlerReady(uint16_t events) noexcept {
   if ((waitEvents_ & EventHandler::READ) and (zmqEvents & ZMQ_POLLIN)) {
     waitEvents_ &= ~EventHandler::READ; // Remove read event
     fiberReadBaton_.post();
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
     coroReadBaton_.post();
 #endif
   }
@@ -317,7 +317,7 @@ SocketImpl::handlerReady(uint16_t events) noexcept {
   if ((waitEvents_ & EventHandler::WRITE) and (zmqEvents & ZMQ_POLLOUT)) {
     waitEvents_ &= ~EventHandler::WRITE; // Remove write event
     fiberWriteBaton_.post();
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
     coroWriteBaton_.post();
 #endif
   }

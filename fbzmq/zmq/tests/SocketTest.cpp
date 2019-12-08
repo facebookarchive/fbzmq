@@ -20,7 +20,7 @@
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncTimeout.h>
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Sleep.h>
 #endif
 
@@ -187,7 +187,7 @@ TEST(Socket, SingleMessage) {
   EXPECT_EQ(str, rcvd.value().read<std::string>().value());
 }
 
-#ifdef FOLLY_HAS_COROUTINES
+#if FOLLY_HAS_COROUTINES
 TEST(Socket, CoroSingleMessage) {
   folly::EventBase evb;
   fbzmq::Context ctx;
