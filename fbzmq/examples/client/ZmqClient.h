@@ -42,11 +42,11 @@ class ZmqClient {
   void makeMultipleRequest() noexcept;
 
   // make a KEY_SET request
-  // return true on success, false on failture
+  // return true on success, false on failure
   bool setKeyValue(const std::string& key, int64_t value) noexcept;
 
   // make a KEY_GET request
-  // return true on success, false on failture
+  // return true on success, false on failure
   bool getKey(const std::string& key, int64_t& value) noexcept;
 
   // make thrift type request
