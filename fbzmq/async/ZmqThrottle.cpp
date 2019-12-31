@@ -10,21 +10,15 @@
 namespace fbzmq {
 
 ZmqThrottle::ZmqThrottle(
-    ZmqEventLoop* evl,
+    folly::ScheduledExecutor* evl,
     std::chrono::milliseconds timeout,
     TimeoutCallback callback)
-    : ZmqTimeout(evl),
-      evl_(evl),
-      timeout_(timeout),
-      callback_(std::move(callback)) {
+    : ZmqTimeout(evl), timeout_(timeout), callback_(std::move(callback)) {
   CHECK(callback_);
 }
 
 void
 ZmqThrottle::operator()() noexcept {
-  // Must be called from within event loop
-  CHECK(evl_->isInEventLoop());
-
   // Return immediately as callback is already scheduled.
   if (isScheduled()) {
     return;
@@ -41,7 +35,6 @@ ZmqThrottle::operator()() noexcept {
 
 void
 ZmqThrottle::timeoutExpired() noexcept {
-  CHECK(evl_->isInEventLoop());
   callback_();
 }
 

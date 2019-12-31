@@ -31,7 +31,7 @@ namespace fbzmq {
 class ZmqThrottle final : private ZmqTimeout {
  public:
   ZmqThrottle(
-      ZmqEventLoop* evl,
+      folly::ScheduledExecutor* evl,
       std::chrono::milliseconds timeout,
       TimeoutCallback callback);
 
@@ -48,7 +48,6 @@ class ZmqThrottle final : private ZmqTimeout {
    */
   bool
   isActive() const {
-    CHECK(evl_->isInEventLoop());
     return isScheduled();
   }
 
@@ -66,7 +65,6 @@ class ZmqThrottle final : private ZmqTimeout {
    */
   void timeoutExpired() noexcept override;
 
-  const ZmqEventLoop* evl_{nullptr};
   const std::chrono::milliseconds timeout_{0};
   TimeoutCallback callback_{nullptr};
 };
