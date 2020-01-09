@@ -1,4 +1,6 @@
 #
+# Copyright (c) 2014-present, Facebook, Inc.
+#
 # CMake package configuration file for fbzmq
 #
 # Defines the target "fbzmq::fbzmq"
