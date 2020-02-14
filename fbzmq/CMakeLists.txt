@@ -147,6 +147,7 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_constants.h
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_data.h
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_types.h
+  ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_metadata.h
   DESTINATION include/fbzmq/service/if/gen-cpp2
 )
 
