@@ -19,7 +19,7 @@ TEST(ResourceMonitorTest, MemoryStats) {
   ResourceMonitor rsrc{};
 
   folly::Optional<uint64_t> rssMem1 = rsrc.getRSSMemBytes();
-  EXPECT_TRUE(rssMem1.hasValue());
+  EXPECT_TRUE(rssMem1.has_value());
 
   // check sanity of return value, check for > 1MB and < 50MB
   EXPECT_GT(rssMem1.value() / 1e6, 1);
@@ -30,7 +30,7 @@ TEST(ResourceMonitorTest, MemoryStats) {
   fill(v.begin(), v.end(), 1);
 
   folly::Optional<uint64_t> rssMem2 = rsrc.getRSSMemBytes();
-  EXPECT_TRUE(rssMem2.hasValue());
+  EXPECT_TRUE(rssMem2.has_value());
   EXPECT_GT(rssMem2.value(), rssMem1.value() + 100);
 }
 

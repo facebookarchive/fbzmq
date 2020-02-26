@@ -137,7 +137,7 @@ class ZmqMonitor final : public ZmqEventLoop {
   updateMemStat() {
     std::string key{"process.memory.rss"};
     auto rssMem = resourceMonitor_.getRSSMemBytes();
-    if (rssMem.hasValue()) {
+    if (rssMem.has_value()) {
       auto now = std::chrono::system_clock::now();
       counters_[key].first.value = static_cast<double>(rssMem.value());
       counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
@@ -153,7 +153,7 @@ class ZmqMonitor final : public ZmqEventLoop {
   updateCpuStat() {
     std::string key{"process.cpu.pct"};
     auto cpuPct = resourceMonitor_.getCPUpercentage();
-    if (cpuPct.hasValue()) {
+    if (cpuPct.has_value()) {
       auto now = std::chrono::system_clock::now();
       counters_[key].first.value = static_cast<double>(cpuPct.value());
       counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;

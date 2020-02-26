@@ -272,7 +272,7 @@ SocketImpl::fiberWaitImpl(
   waitEvents_ |= waitEvent;
   waitBaton->reset(); // Reset baton
   registerHandler(waitEvents_ | EventHandler::PERSIST);
-  if (timeout.hasValue()) {
+  if (timeout.has_value()) {
     const auto hasEvent = waitBaton->timed_wait(timeout.value());
     if (not hasEvent) {
       // Unregister wait-event
