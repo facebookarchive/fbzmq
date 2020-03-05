@@ -30,7 +30,7 @@ add_library(fbzmq
   async/ZmqTimeout.cpp
   service/logging/LogSample.cpp
   service/monitor/ZmqMonitorClient.cpp
-  service/resource-monitor/ResourceMonitor.cpp
+  service/monitor/SystemMetrics.cpp
   service/stats/ExportedStat.cpp
   service/stats/ThreadData.cpp
   zmq/Common.cpp
@@ -54,7 +54,6 @@ target_link_libraries(fbzmq
   ${ZMQ}
   ${PTHREAD}
   FBThrift::thriftcpp2
-  ${SIGAR}
   ${Boost_LIBRARIES}
   -ldl
 )
@@ -128,12 +127,8 @@ install(FILES
 install(FILES
   service/monitor/ZmqMonitor.h
   service/monitor/ZmqMonitorClient.h
+  service/monitor/SystemMetrics.h
   DESTINATION include/fbzmq/service/monitor
-)
-
-install(FILES
-  service/resource-monitor/ResourceMonitor.h
-  DESTINATION include/fbzmq/service/resource-monitor
 )
 
 install(FILES
@@ -226,8 +221,8 @@ if (BUILD_TESTS)
   add_executable(zmq_monitor_client_test
     service/monitor/tests/ZmqMonitorClientTest.cpp
   )
-  add_executable(resource_monitor_test
-    zmq/tests/ResourceMonitorTest.cpp
+  add_executable(system_metrics_test
+    zmq/tests/SystemMetricsTest.cpp
   )
   add_executable(zmq_monitor_sample
     service/monitor/ZmqMonitorSample.cpp
@@ -310,7 +305,7 @@ if (BUILD_TESTS)
     GTest::GTest
     GTest::Main
   )
-  target_link_libraries(resource_monitor_test
+  target_link_libraries(system_metrics_test
     fbzmq
     GTest::GTest
     GTest::Main
@@ -340,6 +335,6 @@ if (BUILD_TESTS)
   add_test(ThreadDataTest thread_data_test)
   add_test(ZmqMonitorTest zmq_monitor_test)
   add_test(ZmqMonitorClientTest zmq_monitor_client_test)
-  add_test(ResourceMonitorTest resource_monitor_test)
+  add_test(SystemMetricsTest system_metrics_test)
 
 endif()

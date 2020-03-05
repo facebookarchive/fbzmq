@@ -29,7 +29,6 @@ find_package(Gflags REQUIRED)
 find_package(Glog REQUIRED)
 find_library(PTHREAD pthread)
 find_library(ZMQ zmq)
-find_library(SIGAR sigar)
 find_package(Threads REQUIRED)
 find_package(Boost 1.67.0 MODULE
   COMPONENTS
@@ -38,9 +37,8 @@ find_package(Boost 1.67.0 MODULE
 )
 
 find_path(ZMQ_INCLUDE_DIR zmq.h)
-find_path(SIGAR_INCLUDE_DIR sigar.h)
 
-include_directories(${Boost_INCLUDE_DIRS} ${ZMQ_INCLUDE_DIR} ${SIGAR_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS} ${ZMQ_INCLUDE_DIR})
 
 
 # Facebook specific libraries

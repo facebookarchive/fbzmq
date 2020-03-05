@@ -16,7 +16,6 @@
 using namespace std;
 using namespace fbzmq;
 
-
 TEST(ZmqMonitorClientTest, BasicOperation) {
   SCOPE_EXIT {
     LOG(INFO) << "ZmqMonitorClient test/basic operations is done";
@@ -49,7 +48,10 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   // Test with a ZmqMonitor client
   auto zmqMonitorClient = std::make_unique<ZmqMonitorClient>(
       context, std::string{"inproc://monitor-rep"});
+
   LOG(INFO) << "monitor client created...";
+  // sleep for 6s to ensure querying twice for calculating the cpu% counter
+  std::this_thread::sleep_for(std::chrono::seconds(6));
 
   thrift::Counter counterBar;
   counterBar.value = 1234;
@@ -155,6 +157,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   zmqMonitorClient->setCounter("foobar", counterFoobar);
   LOG(INFO) << "done setting counters again...";
 
+  // // sleep for 5s to ensure querying twice to calculate the cpu counter
+  // std::this_thread::sleep_for(std::chrono::seconds(5));
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 

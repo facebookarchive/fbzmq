@@ -14,12 +14,12 @@
 #include <fbzmq/async/ZmqTimeout.h>
 #include <fbzmq/service/if/gen-cpp2/Monitor_types.h>
 #include <fbzmq/service/logging/LogSample.h>
-#include <fbzmq/service/resource-monitor/ResourceMonitor.h>
 #include <fbzmq/zmq/Zmq.h>
 #include <folly/Optional.h>
 #include <folly/gen/Base.h>
 #include <thrift/lib/cpp2/Thrift.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
+#include "SystemMetrics.h"
 
 namespace fbzmq {
 
@@ -31,7 +31,6 @@ using CounterTimestampMap = std::unordered_map<
     std::pair<
         thrift::Counter /* counter value */,
         std::chrono::steady_clock::time_point /* last update ts */>>;
-const std::string kUptimeCounter{"process.uptime.seconds"};
 const std::chrono::seconds kAlivenessCheckInterval{180};
 const std::chrono::seconds kProfilingStatInterval{5};
 const size_t kMaxLogEvents{100};
@@ -132,35 +131,28 @@ class ZmqMonitor final : public ZmqEventLoop {
     });
   }
 
-  // update memory stat
+  // update memory stat using getrusage
   void
   updateMemStat() {
     std::string key{"process.memory.rss"};
-    auto rssMem = resourceMonitor_.getRSSMemBytes();
+    auto rssMem = systemMetrics_.getRSSMemBytes();
     if (rssMem.has_value()) {
-      auto now = std::chrono::system_clock::now();
-      counters_[key].first.value = static_cast<double>(rssMem.value());
+      counters_[key].first.value = static_cast<uint64_t>(rssMem.value());
       counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
-      counters_[key].first.timestamp =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now.time_since_epoch())
-              .count();
+      counters_[key].first.timestamp = getCurrentMilliTime();
       counters_[key].second = std::chrono::steady_clock::now();
     }
   }
-  // update cpu stat
+
+  // update CPU stat using getrusage
   void
   updateCpuStat() {
     std::string key{"process.cpu.pct"};
-    auto cpuPct = resourceMonitor_.getCPUpercentage();
+    auto cpuPct = systemMetrics_.getCPUpercentage();
     if (cpuPct.has_value()) {
-      auto now = std::chrono::system_clock::now();
       counters_[key].first.value = static_cast<double>(cpuPct.value());
       counters_[key].first.valueType = fbzmq::thrift::CounterValueType::GAUGE;
-      counters_[key].first.timestamp =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now.time_since_epoch())
-              .count();
+      counters_[key].first.timestamp = getCurrentMilliTime();
       counters_[key].second = std::chrono::steady_clock::now();
     }
   }
@@ -197,6 +189,7 @@ class ZmqMonitor final : public ZmqEventLoop {
     const auto now = std::chrono::steady_clock::now();
 
     // Always update uptime counter counter
+    const std::string kUptimeCounter{"process.uptime.seconds"};
     counters_[kUptimeCounter] = std::make_pair(
         [&] {
           thrift::Counter counter;
@@ -337,6 +330,14 @@ class ZmqMonitor final : public ZmqEventLoop {
     }
   }
 
+  // get current timestamp (in milliseconds)
+  uint64_t
+  getCurrentMilliTime() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+  }
+
   // Timer for checking counter aliveness periodically
   std::unique_ptr<ZmqTimeout> monitorTimer_;
 
@@ -365,8 +366,8 @@ class ZmqMonitor final : public ZmqEventLoop {
   // LogSample to merge to each LogSample we recv
   const folly::Optional<LogSample> logSampleToMerge_;
 
-  // resource monitor
-  fbzmq::ResourceMonitor resourceMonitor_{};
+  // Get the system metrics for resource usage counters
+  fbzmq::SystemMetrics systemMetrics_{};
 };
 
 } // namespace fbzmq

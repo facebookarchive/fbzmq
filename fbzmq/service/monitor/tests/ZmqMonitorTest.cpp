@@ -16,7 +16,6 @@
 using namespace std;
 using namespace fbzmq;
 
-
 TEST(ZmqMonitorTest, BasicOperation) {
   SCOPE_EXIT {
     LOG(INFO) << "ZmqMonitor test/basic operations is done";
@@ -57,6 +56,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
   Socket<ZMQ_DEALER, ZMQ_CLIENT> dealer(context);
   dealer.connect(SocketUrl{"inproc://monitor-rep"}).value();
   LOG(INFO) << "dealer sock connected...";
+  // sleep for 6s to ensure querying twice for calculating the cpu% counter
+  std::this_thread::sleep_for(std::chrono::seconds(6));
 
   thrift::MonitorRequest thriftReq;
   thriftReq.cmd = thrift::MonitorCommand::SET_COUNTER_VALUES;
@@ -71,6 +72,7 @@ TEST(ZmqMonitorTest, BasicOperation) {
 
   thriftReq.cmd = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
   dealer.sendThriftObj(thriftReq, serializer).value();
+
   auto thriftNamesRep =
       dealer.recvThriftObj<thrift::CounterNamesResponse>(serializer).value();
   LOG(INFO) << "got counter names...";
