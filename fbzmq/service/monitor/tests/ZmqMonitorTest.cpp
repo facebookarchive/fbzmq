@@ -30,11 +30,14 @@ TEST(ZmqMonitorTest, BasicOperation) {
   fbzmq::LogSample sampleToMerge;
   sampleToMerge.addString("domain", "terragraph");
   auto monitor = make_shared<ZmqMonitor>(
-      std::string{"inproc://monitor-rep"},
-      std::string{"inproc://monitor-pub"},
-      context,
-      sampleToMerge,
-      std::chrono::seconds(2));
+      std::string{"inproc://monitor-rep"}, // monitorSubmitUrl
+      std::string{"inproc://monitor-pub"}, // monitorPubUrl_
+      context, // zmqContext
+      sampleToMerge, // logSampleToMerge
+      std::chrono::seconds(2), // alivenessCheckInterval
+      100, // maxLogEvents
+      std::chrono::seconds(1) // profilingStatInterval
+  );
 
   auto monitorThread = std::make_unique<std::thread>([monitor]() {
     LOG(INFO) << "ZmqMonitor thread starting";
@@ -203,13 +206,16 @@ TEST(ZmqMonitorTest, BasicOperation) {
   EXPECT_EQ(1, keyValueMap["baz"].value);
 
   // wait until counters expire
-  sleep(6);
+  sleep(4);
 
   thriftReq.cmd = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
   dealer.sendThriftObj(thriftReq, serializer).value();
   thriftNamesRep =
       dealer.recvThriftObj<thrift::CounterNamesResponse>(serializer).value();
   LOG(INFO) << "got counter names...";
+  for (auto counter : thriftNamesRep.counterNames) {
+    LOG(INFO) << "counter after expiration: " << counter << '\n';
+  }
   EXPECT_EQ(thriftNamesRep.counterNames.size(), 3);
 
   // publish some logs

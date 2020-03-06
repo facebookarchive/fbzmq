@@ -36,7 +36,16 @@ SystemMetrics::getRSSMemBytes() {
   return rss;
 }
 
-// Return CPU% the process used
+/* Return CPU% the process used
+ / This need to be called twice to get the time difference
+ / and calculate the CPU%.
+ /
+ / It will return folly::none when:
+ /    1. first time query
+ /    2. get invalid time:
+ /        - previous timestamp > current timestamp
+ /        - preivous total used time > current total used time
+*/
 folly::Optional<double>
 SystemMetrics::getCPUpercentage() {
   struct rusage usage;

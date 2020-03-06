@@ -157,8 +157,6 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   zmqMonitorClient->setCounter("foobar", counterFoobar);
   LOG(INFO) << "done setting counters again...";
 
-  // // sleep for 5s to ensure querying twice to calculate the cpu counter
-  // std::this_thread::sleep_for(std::chrono::seconds(5));
   counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 
