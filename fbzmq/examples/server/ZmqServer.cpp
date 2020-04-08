@@ -199,7 +199,7 @@ ZmqServer::processThriftCommand() noexcept {
 
   const auto& request = maybeThriftObj.value();
   const auto& key = request.key;
-  const auto& value = request.value;
+  const auto value = request.value_ref();
 
   switch (request.cmd) {
   case thrift::Command::KEY_SET: {
