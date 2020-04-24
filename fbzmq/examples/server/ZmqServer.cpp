@@ -225,7 +225,7 @@ ZmqServer::processThriftCommand() noexcept {
       response.success = false;
     } else {
       response.success = true;
-      response.value = it->second;
+      response.value_ref() = it->second;
     }
 
     auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);

@@ -156,7 +156,7 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   thrift::Request request;
   request.cmd = thrift::Command::KEY_SET;
   request.key = key;
-  request.value = value;
+  request.value_ref() = value;
 
   fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> reqSock{zmqContext_};
   reqSock.connect(fbzmq::SocketUrl{thriftCmdUrl_}).value();
@@ -166,8 +166,8 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
     LOG(ERROR) << "send thrift request failed: " << rc.error();
     return false;
   }
-  VLOG(2) << "Sent KEY_SET command (" << request.key << ": " << *request.value
-          << ")";
+  VLOG(2) << "Sent KEY_SET command (" << request.key << ": "
+          << *request.value_ref() << ")";
 
   auto maybeThriftObj = reqSock.recvThriftObj<thrift::Response>(
       serializer_, Constants::kReadTimeout);
@@ -212,7 +212,7 @@ ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
     return false;
   }
 
-  value = *response.value;
+  value = *response.value_ref();
   return true;
 }
 
