@@ -25,8 +25,8 @@ ZmqEventLoop::ZmqEventLoop(
           std::chrono::duration_cast<std::chrono::milliseconds>(
               healthCheckDuration)) {
   // update aliveness timestamp
-  lastestActivityTs_.store(std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch()));
+  latestActivityTs_.store(
+      std::chrono::steady_clock::now().time_since_epoch().count());
 
   // Create signal-fd for start/stop events
   if ((signalFd_ = eventfd(0 /* init-value */, 0 /* flags */)) < 0) {
@@ -260,8 +260,8 @@ ZmqEventLoop::loopForever() {
     }
 
     // update aliveness timestamp
-    lastestActivityTs_.store(std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch()));
+    latestActivityTs_.store(
+        std::chrono::steady_clock::now().time_since_epoch().count());
   } // end while
 }
 

@@ -69,7 +69,7 @@ class ZmqEventLoop : public virtual Runnable, public folly::ScheduledExecutor {
    * We want to make sure to go through event loop at least
    * every healthCheckDuration in worst case to avoid infinite polling or
    * long timeout which casuses unnecessary crash if there's health check
-   * mechanism monitoring on lastestActivityTs_
+   * mechanism monitoring on latestActivityTs_.
    */
   explicit ZmqEventLoop(
       uint64_t queueCapacity = 1e2,
@@ -241,13 +241,14 @@ class ZmqEventLoop : public virtual Runnable, public folly::ScheduledExecutor {
   }
 
   /**
-   * Returns latest activity timestamp.
+   * Returns latest activity timestamp as a steady::clock timepoint.
    * This helps in exposing health condition of current thread to monitoring
    * mechanism.
    */
-  std::chrono::seconds
-  getTimestamp() const {
-    return lastestActivityTs_;
+  std::chrono::steady_clock::time_point
+  getTimestamp() const noexcept {
+    return std::chrono::steady_clock::time_point(
+        std::chrono::steady_clock::duration(latestActivityTs_.load()));
   }
 
   /**
@@ -359,7 +360,7 @@ class ZmqEventLoop : public virtual Runnable, public folly::ScheduledExecutor {
   int64_t timeoutId_{0};
 
   // Timestamp of latest callback gets invoked
-  std::atomic<std::chrono::seconds> lastestActivityTs_;
+  std::atomic<std::chrono::steady_clock::duration::rep> latestActivityTs_;
 
   // Health check duration
   const std::chrono::milliseconds healthCheckDuration_;

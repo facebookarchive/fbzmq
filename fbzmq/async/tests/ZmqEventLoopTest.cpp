@@ -188,8 +188,7 @@ TEST(ZmqEventLoopTest, BasicCommunication) {
  */
 TEST(ZmqEventLoopTest, CopyCapture) {
   ZmqEventLoop evl;
-  auto const& now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
+  auto const& now = std::chrono::steady_clock::now();
 
   auto callback = std::function<void()>([&]() noexcept {
     SUCCEED();
@@ -199,7 +198,10 @@ TEST(ZmqEventLoopTest, CopyCapture) {
 
   LOG(INFO) << "Starting loop...";
   evl.run();
-  EXPECT_GE(evl.getTimestamp(), now);
+  EXPECT_GE(
+      evl.getTimestamp().time_since_epoch().count(),
+      now.time_since_epoch().count());
+
   LOG(INFO) << "Stopping loop...";
   SUCCEED();
 }
@@ -286,8 +288,6 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
 
   uint32_t count = 0;
   auto now = std::chrono::steady_clock::now();
-  auto system_now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
   for (uint32_t i = 1; i <= kCount; ++i) {
     evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
       EXPECT_TRUE(evl.isRunning());
@@ -303,7 +303,9 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   EXPECT_EQ(0, count);
   evl.run();
   EXPECT_EQ(kCount, count);
-  EXPECT_GE(evl.getTimestamp(), system_now);
+  EXPECT_GE(
+      evl.getTimestamp().time_since_epoch().count(),
+      now.time_since_epoch().count());
   EXPECT_FALSE(evl.isRunning());
 
   //
@@ -312,8 +314,7 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   //
 
   count = 0;
-  system_now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
+  now = std::chrono::steady_clock::now();
   for (uint32_t i = 1; i <= kCount; ++i) {
     now = std::chrono::steady_clock::now();
     evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
@@ -331,15 +332,16 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   EXPECT_EQ(0, count);
   evl.run();
   EXPECT_EQ(kCount, count);
-  EXPECT_GE(evl.getTimestamp(), system_now);
+  EXPECT_GE(
+      evl.getTimestamp().time_since_epoch().count(),
+      now.time_since_epoch().count());
   EXPECT_FALSE(evl.isRunning());
 }
 
 TEST(ZmqEventLoopTest, sendRecvMultipart) {
   Context context;
   ZmqEventLoop evl;
-  auto now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
+  auto now = std::chrono::steady_clock::now();
   const SocketUrl socketUrl{"inproc://server_url"};
 
   Socket<ZMQ_REP, ZMQ_SERVER> serverSock{context};
@@ -375,7 +377,9 @@ TEST(ZmqEventLoopTest, sendRecvMultipart) {
   auto msgs = clientSock.recvMultiple().value();
   LOG(INFO) << "Received messages.";
   EXPECT_EQ(2, msgs.size());
-  EXPECT_GE(evl.getTimestamp(), now);
+  EXPECT_GE(
+      evl.getTimestamp().time_since_epoch().count(),
+      now.time_since_epoch().count());
 
   evlThread.join();
 }
@@ -387,9 +391,12 @@ TEST(ZmqEventLoopTest, veriyHealthCheckDuration) {
   auto callback = std::function<void()>([&]() noexcept {
     // Verify that even timeout is scheduled far later, evl gets
     // lastestActivityTs_ updated every healthCheckDuration
-    auto now = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch());
-    EXPECT_GE(1, (now - evl.getTimestamp()).count());
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_GE(
+        1,
+        std::chrono::duration_cast<std::chrono::seconds>(
+            now - evl.getTimestamp())
+            .count());
     evl.stop();
   });
   evl.scheduleTimeout(std::chrono::seconds(3), callback);
@@ -417,15 +424,19 @@ TEST(ZmqEventLoopTest, emptyTimeout) {
 
   // Verify that even no timeout is scheduled, evl gets lastestActivityTs_
   // updated every healthCheckDuration
-  auto now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
-  EXPECT_GE(1, (now - evl.getTimestamp()).count());
+  auto now = std::chrono::steady_clock::now();
+  EXPECT_GE(
+      1,
+      std::chrono::duration_cast<std::chrono::seconds>(now - evl.getTimestamp())
+          .count());
 
   std::this_thread::sleep_for(std::chrono::seconds(3));
 
-  now = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::system_clock::now().time_since_epoch());
-  EXPECT_GE(1, (now - evl.getTimestamp()).count());
+  now = std::chrono::steady_clock::now();
+  EXPECT_GE(
+      1,
+      std::chrono::duration_cast<std::chrono::seconds>(now - evl.getTimestamp())
+          .count());
 
   evl.stop();
   evlThread.join();
