@@ -49,8 +49,6 @@ find_package(fizz CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(wangle CONFIG REQUIRED)
 find_package(FBThrift CONFIG REQUIRED)
-find_package(yarpl CONFIG REQUIRED)
-find_package(rsocket CONFIG REQUIRED)
 
 # Include Thrift
 include_directories(${FBTHRIFT_INCLUDE_DIR})
