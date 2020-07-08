@@ -14,7 +14,6 @@ add_fbthrift_cpp_library(
   service/if/Monitor.thrift
   OPTIONS
     json
-    optionals
   THRIFT_INCLUDE_DIR
     include
 )
@@ -171,7 +170,6 @@ if (BUILD_TESTS)
     zmq/tests/Test.thrift
     OPTIONS
       json
-      optionals
   )
 
   add_fbthrift_cpp_library(
@@ -179,7 +177,6 @@ if (BUILD_TESTS)
     examples/if/Example.thrift
     OPTIONS
       json
-      optionals
   )
 
   add_executable(signal_handler_test
