@@ -176,7 +176,7 @@ ZmqServer::processMultipleCommand() noexcept {
       "Commands received are: Number `{}`, String `{}` and ThriftObj `{}`",
       intMsg.value(),
       stringMsg.value(),
-      thriftMsg.value().value);
+      *thriftMsg.value().value_ref());
 
   // send back reply message
   auto replyMsg = fbzmq::Message::from(reply).value();

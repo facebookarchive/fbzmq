@@ -119,7 +119,7 @@ ZmqClient::makeMultipleRequest() noexcept {
   auto const msg2 = fbzmq::Message::from(request2).value();
 
   thrift::StrValue request3;
-  request3.value = "a Thrift Object";
+  *request3.value_ref() = "a Thrift Object";
 
   auto const msg3 =
       fbzmq::Message::fromThriftObj(request3, serializer_).value();
@@ -128,7 +128,7 @@ ZmqClient::makeMultipleRequest() noexcept {
   reqSock.connect(fbzmq::SocketUrl{multipleCmdUrl_}).value();
 
   LOG(INFO) << "<multi string message> sending request : " << request1 << ", "
-            << request2 << ", " << request3.value;
+            << request2 << ", " << *request3.value_ref();
   auto rc = reqSock.sendMultiple(msg1, msg2, msg3);
   if (rc.hasError()) {
     LOG(ERROR) << "sending request failed: " << rc.error();
