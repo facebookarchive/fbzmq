@@ -98,8 +98,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
       dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(1234, *thriftValuesRep.counters["bar"].value_ref());
-  EXPECT_EQ(5678, *thriftValuesRep.counters["foo"].value_ref());
+  EXPECT_EQ(1234, *thriftValuesRep.counters_ref()["bar"].value_ref());
+  EXPECT_EQ(5678, *thriftValuesRep.counters_ref()["foo"].value_ref());
 
   // Check the new api of DUMP_ALL_COUNTER_DATA and PUB/SUB as well.
   // First put subscriber in a separate thread to avoid control-flow blocking.
