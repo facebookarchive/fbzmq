@@ -99,7 +99,7 @@ class Message {
     }
     T obj;
     ::memcpy(&obj, reinterpret_cast<const void*>(data().data()), size());
-    return std::move(obj);
+    return obj;
   }
 
   /**
