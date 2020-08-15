@@ -1,15 +1,14 @@
 # Contributing to fbzmq
-We want to make contributing to this project as easy and transparent as
-possible.
+We want to make contributing to this project as easy and as transparent as possible.
 
 ## Code of Conduct
 The code of conduct is described in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 
 ## Our Development Process
-This library is actively being used by several projects within Facebook. We
+This library is actively being used by several projects on Facebook. We
 don't expect any major changes in APIs exposed by libraries, however bug
 fixes, performance improvements and code maintenance is likely to happen on
-regular basis. New APIs or functionalities might be added as per future needs.
+a regular basis. New APIs or functionalities might be added as per future needs.
 
 ## Pull Requests
 We actively welcome your pull requests.
@@ -23,9 +22,10 @@ We actively welcome your pull requests.
 
 ## Contributor License Agreement ("CLA")
 In order to accept your pull request, we need you to submit a CLA. You only need
-to do this once to work on any of Facebook's open source projects.
+to do this once to work on any of Facebook's open-source projects.
 
-Complete your CLA here: <https://code.facebook.com/cla>
+Complete your CLA here: [CLA - Agreement](https://code.facebook.com/cla)
+
 
 ## Issues
 We use GitHub issues to track public bugs. Please ensure your description is
@@ -45,3 +45,5 @@ code, our style is
 ## License
 By contributing to fbzmq, you agree that your contributions will be licensed
 under the LICENSE file in the root directory of this source tree.
+
+
