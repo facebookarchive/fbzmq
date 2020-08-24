@@ -7,6 +7,7 @@
 
 namespace cpp fbzmq.thrift
 namespace cpp2 fbzmq.thrift
+namespace go fbzmq.Monitor
 namespace php Fbzmq
 namespace py fbzmq.Monitor
 namespace py3 fbzmq.thrift
