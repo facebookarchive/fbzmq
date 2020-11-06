@@ -17,7 +17,7 @@ awesomeness of `libzmq` (message passing semantics). At a high level it provides
 Here is a simple example demonstrating some powerful abstractions of `fbzmq`
 which makes writing asynchronous applications easier on top of `libzmq`
 
-```
+```cpp
 // Create context
 fbzmq::Context context{1};
 
@@ -104,7 +104,7 @@ Learn more [here.](https://github.com/facebook/fbzmq/blob/master/build/fbcode_bu
 
 
 ### Build Steps
-```
+```shell
 // Step into `build` directory
 cd build
 
@@ -119,13 +119,13 @@ make test
 header files to `/usr/local/lib/` and `/usr/local/include/` (under fbzmq sub
 directory)
 
-```
+```shell
 sudo make install
 ```
 
 ## Build and Install python libraries
 
-```
+```shell
 cd fbzmq/fbzmq/py
 python setup.py build
 sudo python setup.py install
