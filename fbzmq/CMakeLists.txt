@@ -67,15 +67,11 @@ target_include_directories(fbzmq PRIVATE
   ${CMAKE_PREFIX_PATH}
 )
 
-install(TARGETS
-  fbzmq
-  DESTINATION lib
-)
-
 install(
   TARGETS fbzmq monitor_cpp2 monitor_cpp2.thrift_includes
   EXPORT fbzmq-exports
-  DESTINATION lib
+  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+  ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
 )
 
 set(CMAKE_INSTALL_DIR lib/cmake/fbzmq CACHE STRING
@@ -107,7 +103,7 @@ install(FILES
   async/ZmqEventLoop.h
   async/ZmqThrottle.h
   async/ZmqTimeout.h
-  DESTINATION include/fbzmq/async
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/async
 )
 
 install(FILES
@@ -117,26 +113,26 @@ install(FILES
   zmq/Socket.h
   zmq/SocketMonitor.h
   zmq/Zmq.h
-  DESTINATION include/fbzmq/zmq
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/zmq
 )
 
 install(FILES
   service/logging/LogSample.h
-  DESTINATION include/fbzmq/service/logging
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/service/logging
 )
 
 install(FILES
   service/monitor/ZmqMonitor.h
   service/monitor/ZmqMonitorClient.h
   service/monitor/SystemMetrics.h
-  DESTINATION include/fbzmq/service/monitor
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/service/monitor
 )
 
 install(FILES
   service/stats/ExportedStat.h
   service/stats/ExportType.h
   service/stats/ThreadData.h
-  DESTINATION include/fbzmq/service/stats
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/service/stats
 )
 
 install(FILES
@@ -144,12 +140,12 @@ install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_data.h
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_types.h
   ${CMAKE_CURRENT_BINARY_DIR}/service/if/gen-cpp2/Monitor_metadata.h
-  DESTINATION include/fbzmq/service/if/gen-cpp2
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/service/if/gen-cpp2
 )
 
 install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/service/if/Monitor.thrift
-  DESTINATION include/fbzmq/service/if
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fbzmq/service/if
 )
 
 #
