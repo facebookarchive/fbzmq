@@ -40,7 +40,9 @@ add_library(fbzmq
 )
 
 if (BUILD_SHARED_LIBS)
-  set_target_properties(fbzmq PROPERTIES VERSION 1.0.0 SOVERSION 1)
+  set_target_properties(fbzmq monitor_cpp2
+    PROPERTIES VERSION ${PACKAGE_VERSION} SOVERSION ${SO_VERSION}
+  )
 endif()
 
 target_link_libraries(fbzmq
