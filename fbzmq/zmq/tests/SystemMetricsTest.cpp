@@ -16,7 +16,7 @@ namespace fbzmq {
 TEST(SystemMetricsTest, MemoryStats) {
   SystemMetrics systemMetrics_{};
 
-  folly::Optional<uint64_t> rssMem1 = systemMetrics_.getRSSMemBytes();
+  folly::Optional<size_t> rssMem1 = systemMetrics_.getRSSMemBytes();
   EXPECT_TRUE(rssMem1.hasValue());
 
   // check sanity of return value, check for > 1MB and < 100MB
@@ -27,7 +27,7 @@ TEST(SystemMetricsTest, MemoryStats) {
   std::vector<int64_t> v(13 * 0x100000);
   fill(v.begin(), v.end(), 1);
 
-  folly::Optional<uint64_t> rssMem2 = systemMetrics_.getRSSMemBytes();
+  folly::Optional<size_t> rssMem2 = systemMetrics_.getRSSMemBytes();
   EXPECT_TRUE(rssMem2.hasValue());
   EXPECT_GT(rssMem2.value(), rssMem1.value() + 100);
 }
