@@ -9,6 +9,8 @@
 # Generate thrift defs for C++ only. For python install via setuptools
 #
 
+cmake_minimum_required(VERSION 3.2)
+
 add_fbthrift_cpp_library(
   monitor_cpp2
   service/if/Monitor.thrift
