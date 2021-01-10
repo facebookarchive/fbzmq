@@ -329,7 +329,8 @@ class SocketImpl : public folly::EventHandler {
    * "safer" pointer to raw object, mainly for poll. you will need
    * to explicitly cast it to void* if you need to hehehehe
    */
-  uintptr_t operator*() {
+  uintptr_t
+  operator*() {
     return reinterpret_cast<uintptr_t>(ptr_);
   }
 

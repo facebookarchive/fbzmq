@@ -79,7 +79,8 @@ class SocketMonitor {
   /**
    * return raw pointer to the pair socket so it could be added to event loops
    */
-  uintptr_t operator*() {
+  uintptr_t
+  operator*() {
     return reinterpret_cast<uintptr_t>(pairSock_.ptr_);
   }
 

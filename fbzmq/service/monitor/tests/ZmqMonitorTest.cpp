@@ -84,11 +84,12 @@ TEST(ZmqMonitorTest, BasicOperation) {
       thriftNamesRep.counterNames_ref()->begin(),
       thriftNamesRep.counterNames_ref()->end());
   EXPECT_EQ(
-      std::set<std::string>({"bar",
-                             "foo",
-                             "process.cpu.pct",
-                             "process.memory.rss",
-                             "process.uptime.seconds"}),
+      std::set<std::string>(
+          {"bar",
+           "foo",
+           "process.cpu.pct",
+           "process.memory.rss",
+           "process.uptime.seconds"}),
       s);
 
   *thriftReq.cmd_ref() = thrift::MonitorCommand::GET_COUNTER_VALUES;
@@ -228,8 +229,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
   sample1.addString("key", "first sample");
   sample2.addString("key", "second sample");
   *thriftReq.eventLog_ref()->category_ref() = "log_category";
-  *thriftReq.eventLog_ref()->samples_ref() = {sample1.toJson(),
-                                              sample2.toJson()};
+  *thriftReq.eventLog_ref()->samples_ref() = {
+      sample1.toJson(), sample2.toJson()};
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done publishing logs...";
 }
