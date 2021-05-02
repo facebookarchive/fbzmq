@@ -17,6 +17,10 @@ endif()
 
 project(fbzmq)
 
+if (UNIX AND (APPLE OR ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+   add_definitions(-DIS_BSD)
+endif()
+
 set(INCLUDE_INSTALL_DIR include CACHE STRING
     "The subdirectory where header files should be installed")
 set(LIB_INSTALL_DIR lib CACHE STRING
