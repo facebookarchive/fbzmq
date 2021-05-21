@@ -251,7 +251,7 @@ SocketImpl::coroWaitImpl(bool isReadElseWrite) noexcept {
   CHECK(waitBaton);
   waitBaton->reset(); // Reset baton
   registerHandler(waitEvents_ | EventHandler::PERSIST);
-  co_await* waitBaton;
+  co_await *waitBaton;
   co_return;
 }
 #endif
