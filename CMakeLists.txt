@@ -31,9 +31,11 @@ find_library(PTHREAD pthread)
 find_library(ZMQ zmq)
 find_library(SIGAR sigar)
 find_package(Threads REQUIRED)
+
+set(REQ_BOOST_COMPONENTS ${REQ_BOOST_COMPONENTS} system thread context filesystem program_options regex)
 find_package(Boost 1.67.0 MODULE
   COMPONENTS
-    context
+    ${REQ_BOOST_COMPONENTS}
   REQUIRED
 )
 
