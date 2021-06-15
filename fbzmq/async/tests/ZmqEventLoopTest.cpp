@@ -289,7 +289,7 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   uint32_t count = 0;
   auto now = std::chrono::steady_clock::now();
   for (uint32_t i = 1; i <= kCount; ++i) {
-    evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
+    evl.scheduleTimeoutAt(now, [i, &count, &evl]() noexcept {
       EXPECT_TRUE(evl.isRunning());
       ++count;
       EXPECT_EQ(i, count);
@@ -317,7 +317,7 @@ TEST(ZmqEventLoopTest, scheduleTimeoutApi) {
   now = std::chrono::steady_clock::now();
   for (uint32_t i = 1; i <= kCount; ++i) {
     now = std::chrono::steady_clock::now();
-    evl.scheduleTimeoutAt(now, [i, kCount, &count, &evl]() noexcept {
+    evl.scheduleTimeoutAt(now, [i, &count, &evl]() noexcept {
       EXPECT_TRUE(evl.isRunning());
       ++count;
       EXPECT_EQ(i, count);
