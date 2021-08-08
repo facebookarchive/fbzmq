@@ -32,41 +32,41 @@ enum MonitorCommand {
 // counter value type for calculating rates
 enum CounterValueType {
   GAUGE = 1,
-  COUNTER = 2
+  COUNTER = 2,
 }
 
 // store a counter or gauge value with timestamp
 struct Counter {
-  10: double value
-  11: CounterValueType valueType
+  10: double value;
+  11: CounterValueType valueType;
   // last update timestamp in microseconds
-  12: i64 timestamp
+  12: i64 timestamp;
 }
-typedef map<string, Counter>
-  (cpp.type = "std::unordered_map<std::string, fbzmq::thrift::Counter>")
-  CounterMap
+typedef map<string, Counter> (
+  cpp.type = "std::unordered_map<std::string, fbzmq::thrift::Counter>",
+) CounterMap
 
 // parameters for SET_COUNTER_VALUES command
 struct CounterSetParams {
   // counter name -> Counter struct
-  1: CounterMap counters
+  1: CounterMap counters;
 }
 
 // parameters for GET_COUNTER_VALUES command
 struct CounterGetParams {
-  1: list<string> counterNames
+  1: list<string> counterNames;
 }
 
 // parameters for BUMP_COUNTER command
 struct CounterBumpParams {
-  1: list<string> counterNames
+  1: list<string> counterNames;
 }
 
 // parameters for LOG_EVENT
 struct EventLog {
   // name/id of the event log
-  1: string category
-  2: list<string> samples
+  1: string category;
+  2: list<string> samples;
 }
 
 //
@@ -75,11 +75,11 @@ struct EventLog {
 
 // a request to the server (tagged union)
 struct MonitorRequest {
-  1: MonitorCommand cmd
-  2: CounterSetParams counterSetParams
-  3: CounterGetParams counterGetParams
-  4: CounterBumpParams counterBumpParams
-  5: EventLog eventLog
+  1: MonitorCommand cmd;
+  2: CounterSetParams counterSetParams;
+  3: CounterGetParams counterGetParams;
+  4: CounterBumpParams counterBumpParams;
+  5: EventLog eventLog;
 }
 
 //
@@ -87,15 +87,15 @@ struct MonitorRequest {
 //
 
 struct CounterValuesResponse {
-  1: CounterMap counters
+  1: CounterMap counters;
 }
 
 struct EventLogsResponse {
-  1: list<EventLog> eventLogs
+  1: list<EventLog> eventLogs;
 }
 
 struct CounterNamesResponse {
-  1: list<string> counterNames
+  1: list<string> counterNames;
 }
 
 //
@@ -108,7 +108,7 @@ enum PubType {
 }
 
 struct MonitorPub {
-  1: PubType pubType
-  2: CounterValuesResponse counterPub
-  3: EventLog eventLogPub
+  1: PubType pubType;
+  2: CounterValuesResponse counterPub;
+  3: EventLog eventLogPub;
 }
