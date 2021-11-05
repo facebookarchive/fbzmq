@@ -36,8 +36,8 @@ void
 ZmqMonitorClient::setCounter(
     std::string const& name, thrift::Counter const& counter) {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::SET_COUNTER_VALUES;
-  thriftReq.counterSetParams_ref()->counters_ref()->emplace(name, counter);
+  *thriftReq.cmd() = thrift::MonitorCommand::SET_COUNTER_VALUES;
+  thriftReq.counterSetParams()->counters()->emplace(name, counter);
 
   const auto ret = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -49,8 +49,8 @@ ZmqMonitorClient::setCounter(
 void
 ZmqMonitorClient::setCounters(CounterMap const& counters) {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::SET_COUNTER_VALUES;
-  *thriftReq.counterSetParams_ref()->counters_ref() = counters;
+  *thriftReq.cmd() = thrift::MonitorCommand::SET_COUNTER_VALUES;
+  *thriftReq.counterSetParams()->counters() = counters;
 
   const auto ret = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -62,8 +62,8 @@ ZmqMonitorClient::setCounters(CounterMap const& counters) {
 folly::Optional<thrift::Counter>
 ZmqMonitorClient::getCounter(std::string const& name) {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::GET_COUNTER_VALUES;
-  thriftReq.counterGetParams_ref()->counterNames_ref()->emplace_back(name);
+  *thriftReq.cmd() = thrift::MonitorCommand::GET_COUNTER_VALUES;
+  thriftReq.counterGetParams()->counterNames()->emplace_back(name);
 
   const auto sendRet = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -85,7 +85,7 @@ ZmqMonitorClient::getCounter(std::string const& name) {
     return folly::none;
   }
 
-  const auto& counters = *response.value().counters_ref();
+  const auto& counters = *response.value().counters();
   const auto it = counters.find(name);
   if (it == counters.end()) {
     return folly::none;
@@ -96,7 +96,7 @@ ZmqMonitorClient::getCounter(std::string const& name) {
 std::vector<std::string /* name */>
 ZmqMonitorClient::dumpCounterNames() {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
 
   const auto sendRet = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -119,13 +119,13 @@ ZmqMonitorClient::dumpCounterNames() {
     return {};
   }
 
-  return *response.value().counterNames_ref();
+  return *response.value().counterNames();
 }
 
 CounterMap
 ZmqMonitorClient::dumpCounters() {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
 
   CounterMap emptyCounterMap;
 
@@ -149,14 +149,14 @@ ZmqMonitorClient::dumpCounters() {
     return emptyCounterMap;
   }
 
-  return *response.value().counters_ref();
+  return *response.value().counters();
 }
 
 void
 ZmqMonitorClient::bumpCounter(std::string const& name) {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::BUMP_COUNTER;
-  thriftReq.counterBumpParams_ref()->counterNames_ref()->emplace_back(name);
+  *thriftReq.cmd() = thrift::MonitorCommand::BUMP_COUNTER;
+  thriftReq.counterBumpParams()->counterNames()->emplace_back(name);
 
   const auto ret = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -169,8 +169,8 @@ ZmqMonitorClient::bumpCounter(std::string const& name) {
 void
 ZmqMonitorClient::addEventLog(thrift::EventLog const& eventLog) {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::LOG_EVENT;
-  *thriftReq.eventLog_ref() = eventLog;
+  *thriftReq.cmd() = thrift::MonitorCommand::LOG_EVENT;
+  *thriftReq.eventLog() = eventLog;
 
   const auto ret = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -183,7 +183,7 @@ ZmqMonitorClient::addEventLog(thrift::EventLog const& eventLog) {
 folly::Optional<std::vector<thrift::EventLog>>
 ZmqMonitorClient::getLastEventLogs() {
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::GET_EVENT_LOGS;
+  *thriftReq.cmd() = thrift::MonitorCommand::GET_EVENT_LOGS;
 
   const auto ret = monitorCmdSock_.sendOne(
       Message::fromThriftObj(thriftReq, serializer_).value());
@@ -206,7 +206,7 @@ ZmqMonitorClient::getLastEventLogs() {
     return folly::none;
   }
 
-  return *response.value().eventLogs_ref();
+  return *response.value().eventLogs();
 }
 
 } // namespace fbzmq

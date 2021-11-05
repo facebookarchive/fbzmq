@@ -54,9 +54,9 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   std::this_thread::sleep_for(std::chrono::seconds(6));
 
   thrift::Counter counterBar;
-  *counterBar.value_ref() = 1234;
+  *counterBar.value() = 1234;
   thrift::Counter counterFoo;
-  *counterFoo.value_ref() = 5678;
+  *counterFoo.value() = 5678;
   const CounterMap initCounters = {{"bar", counterBar}, {"foo", counterFoo}};
   zmqMonitorClient->setCounters(initCounters);
   LOG(INFO) << "done setting counters...";
@@ -64,8 +64,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   auto counters = zmqMonitorClient->dumpCounters();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(1234, *zmqMonitorClient->getCounter("bar")->value_ref());
-  EXPECT_EQ(5678, *zmqMonitorClient->getCounter("foo")->value_ref());
+  EXPECT_EQ(1234, *zmqMonitorClient->getCounter("bar")->value());
+  EXPECT_EQ(5678, *zmqMonitorClient->getCounter("foo")->value());
   EXPECT_FALSE(bool(zmqMonitorClient->getCounter("foobar")));
 
   const auto counterNames = zmqMonitorClient->dumpCounterNames();
@@ -84,8 +84,8 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   LOG(INFO) << "got counter values...";
 
   EXPECT_EQ(5, counters.size());
-  EXPECT_EQ(1234, *counters["bar"].value_ref());
-  EXPECT_EQ(5678, *counters["foo"].value_ref());
+  EXPECT_EQ(1234, *counters["bar"].value());
+  EXPECT_EQ(5678, *counters["foo"].value());
 
   // Check the new api of DUMP_ALL_COUNTER_DATA and PUB/SUB as well.
   // First put subscriber in a separate thread to avoid control-flow blocking.
@@ -104,37 +104,37 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType_ref());
-      auto& updateCounters = *publication.counterPub_ref()->counters_ref();
+      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType());
+      auto& updateCounters = *publication.counterPub()->counters();
       EXPECT_EQ(1, updateCounters.size());
-      EXPECT_EQ(9012, *updateCounters["foobar"].value_ref());
+      EXPECT_EQ(9012, *updateCounters["foobar"].value());
     }
 
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType_ref());
-      auto& updateCounters = *publication.counterPub_ref()->counters_ref();
+      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType());
+      auto& updateCounters = *publication.counterPub()->counters();
       EXPECT_EQ(1, updateCounters.size());
-      EXPECT_EQ(1235, *updateCounters["bar"].value_ref());
+      EXPECT_EQ(1235, *updateCounters["bar"].value());
     }
 
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType_ref());
-      auto& updateCounters = *publication.counterPub_ref()->counters_ref();
+      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType());
+      auto& updateCounters = *publication.counterPub()->counters();
       EXPECT_EQ(1, updateCounters.size());
-      EXPECT_EQ(1, *updateCounters["baz"].value_ref());
+      EXPECT_EQ(1, *updateCounters["baz"].value());
     }
 
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, *publication.pubType_ref());
-      EXPECT_EQ("log_category", *publication.eventLogPub_ref()->category_ref());
+      EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, *publication.pubType());
+      EXPECT_EQ("log_category", *publication.eventLogPub()->category());
       vector<string> expectedSamples = {"log1", "log2"};
-      EXPECT_EQ(expectedSamples, *publication.eventLogPub_ref()->samples_ref());
+      EXPECT_EQ(expectedSamples, *publication.eventLogPub()->samples());
     }
 
     LOG(INFO) << "subscriber thread finishing";
@@ -154,7 +154,7 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
 
   // Add sth extra to the monitor.
   thrift::Counter counterFoobar;
-  *counterFoobar.value_ref() = 9012;
+  *counterFoobar.value() = 9012;
   zmqMonitorClient->setCounter("foobar", counterFoobar);
   LOG(INFO) << "done setting counters again...";
 
@@ -162,9 +162,9 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
   LOG(INFO) << "got counter values...";
 
   EXPECT_EQ(6, counters.size());
-  EXPECT_EQ(1234, *counters["bar"].value_ref());
-  EXPECT_EQ(5678, *counters["foo"].value_ref());
-  EXPECT_EQ(9012, *counters["foobar"].value_ref());
+  EXPECT_EQ(1234, *counters["bar"].value());
+  EXPECT_EQ(5678, *counters["foo"].value());
+  EXPECT_EQ(9012, *counters["foobar"].value());
 
   // bump some counters
   zmqMonitorClient->bumpCounter("bar");
@@ -176,25 +176,25 @@ TEST(ZmqMonitorClientTest, BasicOperation) {
 
   EXPECT_EQ(7, counters.size());
   // bumped existing counter
-  EXPECT_EQ(1235, *counters["bar"].value_ref());
+  EXPECT_EQ(1235, *counters["bar"].value());
   // unbumped existing counter
-  EXPECT_EQ(9012, *counters["foobar"].value_ref());
+  EXPECT_EQ(9012, *counters["foobar"].value());
   // bumped new counter
-  EXPECT_EQ(1, *counters["baz"].value_ref());
+  EXPECT_EQ(1, *counters["baz"].value());
 
   // publish some logs
   thrift::EventLog eventLog;
-  *eventLog.category_ref() = "log_category";
-  *eventLog.samples_ref() = {"log1", "log2"};
+  *eventLog.category() = "log_category";
+  *eventLog.samples() = {"log1", "log2"};
   zmqMonitorClient->addEventLog(eventLog);
   LOG(INFO) << "done publishing logs...";
 
   auto lastEventLogs = zmqMonitorClient->getLastEventLogs();
   // number of eventLogs
   EXPECT_EQ(1, lastEventLogs->size());
-  EXPECT_EQ("log_category", *lastEventLogs->at(0).category_ref());
-  EXPECT_EQ("log1", lastEventLogs->at(0).samples_ref()[0]);
-  EXPECT_EQ("log2", lastEventLogs->at(0).samples_ref()[1]);
+  EXPECT_EQ("log_category", *lastEventLogs->at(0).category());
+  EXPECT_EQ("log1", lastEventLogs->at(0).samples()[0]);
+  EXPECT_EQ("log2", lastEventLogs->at(0).samples()[1]);
   LOG(INFO) << "done with last event logs...";
 }
 

@@ -119,7 +119,7 @@ ZmqClient::makeMultipleRequest() noexcept {
   auto const msg2 = fbzmq::Message::from(request2).value();
 
   thrift::StrValue request3;
-  *request3.value_ref() = "a Thrift Object";
+  *request3.value() = "a Thrift Object";
 
   auto const msg3 =
       fbzmq::Message::fromThriftObj(request3, serializer_).value();
@@ -128,7 +128,7 @@ ZmqClient::makeMultipleRequest() noexcept {
   reqSock.connect(fbzmq::SocketUrl{multipleCmdUrl_}).value();
 
   LOG(INFO) << "<multi string message> sending request : " << request1 << ", "
-            << request2 << ", " << *request3.value_ref();
+            << request2 << ", " << *request3.value();
   auto rc = reqSock.sendMultiple(msg1, msg2, msg3);
   if (rc.hasError()) {
     LOG(ERROR) << "sending request failed: " << rc.error();
@@ -156,7 +156,7 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   thrift::Request request;
   *request.cmd_ref() = thrift::Command::KEY_SET;
   *request.key_ref() = key;
-  request.value_ref() = value;
+  request.value() = value;
 
   fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> reqSock{zmqContext_};
   reqSock.connect(fbzmq::SocketUrl{thriftCmdUrl_}).value();
@@ -167,7 +167,7 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
     return false;
   }
   VLOG(2) << "Sent KEY_SET command (" << *request.key_ref() << ": "
-          << *request.value_ref() << ")";
+          << *request.value() << ")";
 
   auto maybeThriftObj = reqSock.recvThriftObj<thrift::Response>(
       serializer_, Constants::kReadTimeout);
@@ -212,7 +212,7 @@ ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
     return false;
   }
 
-  value = *response.value_ref();
+  value = *response.value();
   return true;
 }
 

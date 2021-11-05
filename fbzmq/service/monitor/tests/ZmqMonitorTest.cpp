@@ -63,17 +63,17 @@ TEST(ZmqMonitorTest, BasicOperation) {
   std::this_thread::sleep_for(std::chrono::seconds(6));
 
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::SET_COUNTER_VALUES;
+  *thriftReq.cmd() = thrift::MonitorCommand::SET_COUNTER_VALUES;
   thrift::Counter counterBar;
-  *counterBar.value_ref() = 1234;
-  thriftReq.counterSetParams_ref()->counters_ref()["bar"] = counterBar;
+  *counterBar.value() = 1234;
+  thriftReq.counterSetParams()->counters()["bar"] = counterBar;
   thrift::Counter counterFoo;
-  *counterFoo.value_ref() = 5678;
-  thriftReq.counterSetParams_ref()->counters_ref()["foo"] = counterFoo;
+  *counterFoo.value() = 5678;
+  thriftReq.counterSetParams()->counters()["foo"] = counterFoo;
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done setting counters...";
 
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
   dealer.sendThriftObj(thriftReq, serializer).value();
 
   auto thriftNamesRep =
@@ -81,8 +81,8 @@ TEST(ZmqMonitorTest, BasicOperation) {
   LOG(INFO) << "got counter names...";
 
   std::set<std::string> s(
-      thriftNamesRep.counterNames_ref()->begin(),
-      thriftNamesRep.counterNames_ref()->end());
+      thriftNamesRep.counterNames()->begin(),
+      thriftNamesRep.counterNames()->end());
   EXPECT_EQ(
       std::set<std::string>(
           {"bar",
@@ -92,15 +92,15 @@ TEST(ZmqMonitorTest, BasicOperation) {
            "process.uptime.seconds"}),
       s);
 
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::GET_COUNTER_VALUES;
-  *thriftReq.counterGetParams_ref()->counterNames_ref() = {"bar", "foo"};
+  *thriftReq.cmd() = thrift::MonitorCommand::GET_COUNTER_VALUES;
+  *thriftReq.counterGetParams()->counterNames() = {"bar", "foo"};
   dealer.sendThriftObj(thriftReq, serializer).value();
   auto thriftValuesRep =
       dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "got counter values...";
 
-  EXPECT_EQ(1234, *thriftValuesRep.counters_ref()["bar"].value_ref());
-  EXPECT_EQ(5678, *thriftValuesRep.counters_ref()["foo"].value_ref());
+  EXPECT_EQ(1234, *thriftValuesRep.counters()["bar"].value());
+  EXPECT_EQ(5678, *thriftValuesRep.counters()["foo"].value());
 
   // Check the new api of DUMP_ALL_COUNTER_DATA and PUB/SUB as well.
   // First put subscriber in a separate thread to avoid control-flow blocking.
@@ -119,32 +119,32 @@ TEST(ZmqMonitorTest, BasicOperation) {
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType_ref());
-      auto& updateCounters = *publication.counterPub_ref()->counters_ref();
+      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType());
+      auto& updateCounters = *publication.counterPub()->counters();
       EXPECT_EQ(1, updateCounters.size());
-      EXPECT_EQ(9012, *updateCounters["foobar"].value_ref());
+      EXPECT_EQ(9012, *updateCounters["foobar"].value());
     }
 
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType_ref());
-      auto& updateCounters = *publication.counterPub_ref()->counters_ref();
+      EXPECT_EQ(thrift::PubType::COUNTER_PUB, *publication.pubType());
+      auto& updateCounters = *publication.counterPub()->counters();
       EXPECT_EQ(3, updateCounters.size());
-      EXPECT_EQ(1235, *updateCounters["bar"].value_ref());
-      EXPECT_EQ(5679, *updateCounters["foo"].value_ref());
-      EXPECT_EQ(1, *updateCounters["baz"].value_ref());
+      EXPECT_EQ(1235, *updateCounters["bar"].value());
+      EXPECT_EQ(5679, *updateCounters["foo"].value());
+      EXPECT_EQ(1, *updateCounters["baz"].value());
     }
 
     {
       auto publication =
           sub.recvThriftObj<thrift::MonitorPub>(serializer).value();
-      EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, *publication.pubType_ref());
-      EXPECT_EQ("log_category", *publication.eventLogPub_ref()->category_ref());
-      auto ls1 = LogSample::fromJson(
-          publication.eventLogPub_ref()->samples_ref()->at(0));
-      auto ls2 = LogSample::fromJson(
-          publication.eventLogPub_ref()->samples_ref()->at(1));
+      EXPECT_EQ(thrift::PubType::EVENT_LOG_PUB, *publication.pubType());
+      EXPECT_EQ("log_category", *publication.eventLogPub()->category());
+      auto ls1 =
+          LogSample::fromJson(publication.eventLogPub()->samples()->at(0));
+      auto ls2 =
+          LogSample::fromJson(publication.eventLogPub()->samples()->at(1));
       EXPECT_EQ(ls1.getString("key"), "first sample");
       EXPECT_EQ(ls1.getString("domain"), "terragraph");
       EXPECT_EQ(ls2.getString("key"), "second sample");
@@ -167,70 +167,68 @@ TEST(ZmqMonitorTest, BasicOperation) {
   LOG(INFO) << "main thread resume...";
 
   // Add sth extra to the monitor
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::SET_COUNTER_VALUES;
+  *thriftReq.cmd() = thrift::MonitorCommand::SET_COUNTER_VALUES;
   thrift::Counter counterFoobar;
-  *counterFoobar.value_ref() = 9012;
-  thriftReq.counterSetParams_ref()->counters_ref()->clear();
-  thriftReq.counterSetParams_ref()->counters_ref()["foobar"] = counterFoobar;
+  *counterFoobar.value() = 9012;
+  thriftReq.counterSetParams()->counters()->clear();
+  thriftReq.counterSetParams()->counters()["foobar"] = counterFoobar;
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done setting counters again...";
 
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
   dealer.sendThriftObj(thriftReq, serializer).value();
   auto thriftNameValuesRep =
       dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "got all counters dumped from dealer sock...";
 
-  auto& keyValueMap = *thriftNameValuesRep.counters_ref();
+  auto& keyValueMap = *thriftNameValuesRep.counters();
   EXPECT_EQ(6, keyValueMap.size());
-  EXPECT_EQ(1234, *keyValueMap["bar"].value_ref());
-  EXPECT_EQ(5678, *keyValueMap["foo"].value_ref());
-  EXPECT_EQ(9012, *keyValueMap["foobar"].value_ref());
+  EXPECT_EQ(1234, *keyValueMap["bar"].value());
+  EXPECT_EQ(5678, *keyValueMap["foo"].value());
+  EXPECT_EQ(9012, *keyValueMap["foobar"].value());
 
   // bump some counters
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::BUMP_COUNTER;
-  *thriftReq.counterBumpParams_ref()->counterNames_ref() = {
-      "bar", "foo", "baz"};
+  *thriftReq.cmd() = thrift::MonitorCommand::BUMP_COUNTER;
+  *thriftReq.counterBumpParams()->counterNames() = {"bar", "foo", "baz"};
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done bumping counters ...";
 
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
   dealer.sendThriftObj(thriftReq, serializer).value();
   thriftNameValuesRep =
       dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "got all counters dumped from dealer sock...";
 
-  keyValueMap = *thriftNameValuesRep.counters_ref();
+  keyValueMap = *thriftNameValuesRep.counters();
   EXPECT_EQ(7, keyValueMap.size());
   // bumped existing counter
-  EXPECT_EQ(1235, *keyValueMap["bar"].value_ref());
-  EXPECT_EQ(5679, *keyValueMap["foo"].value_ref());
+  EXPECT_EQ(1235, *keyValueMap["bar"].value());
+  EXPECT_EQ(5679, *keyValueMap["foo"].value());
   // unbumped existing counter
-  EXPECT_EQ(9012, *keyValueMap["foobar"].value_ref());
+  EXPECT_EQ(9012, *keyValueMap["foobar"].value());
   // bumped new counter
-  EXPECT_EQ(1, *keyValueMap["baz"].value_ref());
+  EXPECT_EQ(1, *keyValueMap["baz"].value());
 
   // wait until counters expire
   sleep(4);
 
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES;
   dealer.sendThriftObj(thriftReq, serializer).value();
   thriftNamesRep =
       dealer.recvThriftObj<thrift::CounterNamesResponse>(serializer).value();
   LOG(INFO) << "got counter names...";
-  for (auto counter : *thriftNamesRep.counterNames_ref()) {
+  for (auto counter : *thriftNamesRep.counterNames()) {
     LOG(INFO) << "counter after expiration: " << counter << '\n';
   }
-  EXPECT_EQ(thriftNamesRep.counterNames_ref()->size(), 3);
+  EXPECT_EQ(thriftNamesRep.counterNames()->size(), 3);
 
   // publish some logs
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::LOG_EVENT;
+  *thriftReq.cmd() = thrift::MonitorCommand::LOG_EVENT;
   fbzmq::LogSample sample1, sample2;
   sample1.addString("key", "first sample");
   sample2.addString("key", "second sample");
-  *thriftReq.eventLog_ref()->category_ref() = "log_category";
-  *thriftReq.eventLog_ref()->samples_ref() = {
-      sample1.toJson(), sample2.toJson()};
+  *thriftReq.eventLog()->category() = "log_category";
+  *thriftReq.eventLog()->samples() = {sample1.toJson(), sample2.toJson()};
   dealer.sendThriftObj(thriftReq, serializer).value();
   LOG(INFO) << "done publishing logs...";
 }

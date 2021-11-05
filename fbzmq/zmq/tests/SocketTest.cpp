@@ -666,25 +666,25 @@ TEST(Socket, ThriftSerDeser) {
 
   // The thrift "value" object
   fbzmq::test::TestValue clientVal;
-  *clientVal.value_ref() = "test1234";
+  *clientVal.value() = "test1234";
 
   auto rawClientVal = fbzmq::util::writeThriftObj(clientVal, serializer);
 
   // The wrapper we use to store something in KV database
   fbzmq::test::WrapperValue wrapperVal;
-  *wrapperVal.version_ref() = 1000;
-  *wrapperVal.value_ref() = *rawClientVal;
+  *wrapperVal.version() = 1000;
+  *wrapperVal.value() = *rawClientVal;
 
   auto rawWrapperVal = fbzmq::util::writeThriftObj(wrapperVal, serializer);
   auto newWrapperVal = fbzmq::util::readThriftObj<fbzmq::test::WrapperValue>(
       *(rawWrapperVal.get()), serializer);
 
-  EXPECT_EQ(*newWrapperVal.version_ref(), 1000);
+  EXPECT_EQ(*newWrapperVal.version(), 1000);
 
   auto newClientVal = fbzmq::util::readThriftObj<fbzmq::test::TestValue>(
-      *newWrapperVal.value_ref(), serializer);
+      *newWrapperVal.value(), serializer);
 
-  EXPECT_EQ(*newClientVal.value_ref(), "test1234");
+  EXPECT_EQ(*newClientVal.value(), "test1234");
 }
 
 //
@@ -693,7 +693,7 @@ TEST(Socket, ThriftSerDeser) {
 TEST(Socket, ThriftSerDeserStr) {
   CompactSerializer serializer;
   fbzmq::test::TestValue clientVal;
-  *clientVal.value_ref() = "hello world";
+  *clientVal.value() = "hello world";
 
   auto str = fbzmq::util::writeThriftObjStr(clientVal, serializer);
   auto obj =
@@ -744,7 +744,7 @@ TEST(Socket, SendRecvThriftObj) {
   // The thrift "value" object
   const auto str = genRandomStr(32768);
   fbzmq::test::TestValue testValue;
-  *testValue.value_ref() = str;
+  *testValue.value() = str;
 
   fbzmq::Message::fromThriftObj(testValue, serializer)
       .then([&req](fbzmq::Message&& msg) { req.sendOne(std::move(msg)); });
@@ -754,7 +754,7 @@ TEST(Socket, SendRecvThriftObj) {
   fbzmq::poll(pollItems).then([&serializer, &rep, &str](int) {
     rep.recvOne().then([&serializer, &str](fbzmq::Message&& rcvd) {
       auto rcvdValue = rcvd.readThriftObj<fbzmq::test::TestValue>(serializer);
-      EXPECT_EQ(str, *rcvdValue.value().value_ref());
+      EXPECT_EQ(str, *rcvdValue.value().value());
     });
   });
 }
@@ -775,7 +775,7 @@ TEST(Socket, ThriftObjPingPong) {
     {
       const auto str = genRandomStr(32768);
       fbzmq::test::TestValue testValue;
-      *testValue.value_ref() = str;
+      *testValue.value() = str;
 
       fbzmq::Message::fromThriftObj(testValue, serializer)
           .then([&req](fbzmq::Message&& msg) { req.sendOne(std::move(msg)); });
@@ -786,7 +786,7 @@ TEST(Socket, ThriftObjPingPong) {
         rep.recvOne().then([&serializer, &str](fbzmq::Message&& rcvd) {
           auto rcvdValue =
               rcvd.readThriftObj<fbzmq::test::TestValue>(serializer);
-          EXPECT_EQ(str, *rcvdValue.value().value_ref());
+          EXPECT_EQ(str, *rcvdValue.value().value());
         });
       });
     }
@@ -794,7 +794,7 @@ TEST(Socket, ThriftObjPingPong) {
     {
       const auto str = genRandomStr(32768);
       fbzmq::test::TestValue testValue;
-      *testValue.value_ref() = str;
+      *testValue.value() = str;
 
       fbzmq::Message::fromThriftObj(testValue, serializer)
           .then([&rep](fbzmq::Message&& msg) { rep.sendOne(std::move(msg)); });
@@ -805,7 +805,7 @@ TEST(Socket, ThriftObjPingPong) {
         req.recvOne().then([&serializer, &str](fbzmq::Message&& rcvd) {
           auto rcvdValue =
               rcvd.readThriftObj<fbzmq::test::TestValue>(serializer);
-          EXPECT_EQ(str, *rcvdValue.value().value_ref());
+          EXPECT_EQ(str, *rcvdValue.value().value());
         });
       });
     }
@@ -832,7 +832,7 @@ TEST(Socket, ThriftObjectSendManyTwoThreads) {
                      .value()
                      .readThriftObj<fbzmq::test::TestValue>(serializer)
                      .value();
-      EXPECT_EQ(32768, obj.value_ref()->size());
+      EXPECT_EQ(32768, obj.value()->size());
     }
     server.unbind(fbzmq::SocketUrl{"inproc://test"}).value();
   });
@@ -845,7 +845,7 @@ TEST(Socket, ThriftObjectSendManyTwoThreads) {
     for (int i = 0; i < 1024; i++) {
       const auto str = genRandomStr(32768);
       fbzmq::test::TestValue testValue;
-      *testValue.value_ref() = str;
+      *testValue.value() = str;
 
       fbzmq::Message::fromThriftObj(testValue, serializer)
           .then([&client](fbzmq::Message&& msg) {

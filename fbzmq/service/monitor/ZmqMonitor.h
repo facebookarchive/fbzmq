@@ -137,10 +137,10 @@ class ZmqMonitor final : public ZmqEventLoop {
     std::string key{"process.memory.rss"};
     auto rssMem = systemMetrics_.getRSSMemBytes();
     if (rssMem.has_value()) {
-      *counters_[key].first.value_ref() = static_cast<uint64_t>(rssMem.value());
-      *counters_[key].first.valueType_ref() =
+      *counters_[key].first.value() = static_cast<uint64_t>(rssMem.value());
+      *counters_[key].first.valueType() =
           fbzmq::thrift::CounterValueType::GAUGE;
-      *counters_[key].first.timestamp_ref() = getCurrentMilliTime();
+      *counters_[key].first.timestamp() = getCurrentMilliTime();
       counters_[key].second = std::chrono::steady_clock::now();
     }
   }
@@ -151,10 +151,10 @@ class ZmqMonitor final : public ZmqEventLoop {
     std::string key{"process.cpu.pct"};
     auto cpuPct = systemMetrics_.getCPUpercentage();
     if (cpuPct.has_value()) {
-      *counters_[key].first.value_ref() = static_cast<double>(cpuPct.value());
-      *counters_[key].first.valueType_ref() =
+      *counters_[key].first.value() = static_cast<double>(cpuPct.value());
+      *counters_[key].first.valueType() =
           fbzmq::thrift::CounterValueType::GAUGE;
-      *counters_[key].first.timestamp_ref() = getCurrentMilliTime();
+      *counters_[key].first.timestamp() = getCurrentMilliTime();
       counters_[key].second = std::chrono::steady_clock::now();
     }
   }
@@ -195,11 +195,11 @@ class ZmqMonitor final : public ZmqEventLoop {
     counters_[kUptimeCounter] = std::make_pair(
         [&] {
           thrift::Counter counter;
-          *counter.value_ref() =
+          *counter.value() =
               std::chrono::duration_cast<std::chrono::seconds>(now - startTime_)
                   .count();
-          *counter.valueType_ref() = thrift::CounterValueType::COUNTER;
-          *counter.timestamp_ref() =
+          *counter.valueType() = thrift::CounterValueType::COUNTER;
+          *counter.timestamp() =
               std::chrono::duration_cast<std::chrono::microseconds>(
                   now.time_since_epoch())
                   .count();
@@ -207,26 +207,26 @@ class ZmqMonitor final : public ZmqEventLoop {
         }(),
         now);
 
-    switch (*thriftReq.cmd_ref()) {
+    switch (*thriftReq.cmd()) {
     case thrift::MonitorCommand::SET_COUNTER_VALUES: {
-      for (auto const& kv : *thriftReq.counterSetParams_ref()->counters_ref()) {
+      for (auto const& kv : *thriftReq.counterSetParams()->counters()) {
         counters_[kv.first].first = kv.second;
         counters_[kv.first].second = now;
       }
       // Dump new monitor values to the publish socket.
-      *thriftPub.pubType_ref() = thrift::PubType::COUNTER_PUB;
-      *thriftPub.counterPub_ref()->counters_ref() =
-          *thriftReq.counterSetParams_ref()->counters_ref();
+      *thriftPub.pubType() = thrift::PubType::COUNTER_PUB;
+      *thriftPub.counterPub()->counters() =
+          *thriftReq.counterSetParams()->counters();
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
     } break;
 
     case thrift::MonitorCommand::GET_COUNTER_VALUES:
       for (auto const& counterName :
-           *thriftReq.counterGetParams_ref()->counterNames_ref()) {
+           *thriftReq.counterGetParams()->counterNames()) {
         auto it = counters_.find(counterName);
         if (it != counters_.end()) {
-          thriftValueRep.counters_ref()[counterName] = it->second.first;
+          thriftValueRep.counters()[counterName] = it->second.first;
         }
       }
       monitorReceiveSock_.sendMultiple(
@@ -235,7 +235,7 @@ class ZmqMonitor final : public ZmqEventLoop {
       break;
 
     case thrift::MonitorCommand::DUMP_ALL_COUNTER_NAMES:
-      *thriftNameRep.counterNames_ref() = folly::gen::from(counters_) |
+      *thriftNameRep.counterNames() = folly::gen::from(counters_) |
           folly::gen::get<0>() | folly::gen::as<std::vector<std::string>>();
       monitorReceiveSock_.sendMultiple(
           requestIdMsg,
@@ -244,7 +244,7 @@ class ZmqMonitor final : public ZmqEventLoop {
 
     case thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA:
       for (auto const& kv : counters_) {
-        thriftValueRep.counters_ref()->emplace(kv.first, kv.second.first);
+        thriftValueRep.counters()->emplace(kv.first, kv.second.first);
       }
       monitorReceiveSock_.sendMultiple(
           requestIdMsg,
@@ -252,32 +252,31 @@ class ZmqMonitor final : public ZmqEventLoop {
       break;
 
     case thrift::MonitorCommand::BUMP_COUNTER: {
-      for (auto const& name :
-           *thriftReq.counterBumpParams_ref()->counterNames_ref()) {
+      for (auto const& name : *thriftReq.counterBumpParams()->counterNames()) {
         if (counters_.find(name) == counters_.end()) {
           thrift::Counter counter;
-          *counter.value_ref() = 0;
-          *counter.valueType_ref() = thrift::CounterValueType::COUNTER;
-          *counter.timestamp_ref() = std::time(nullptr);
+          *counter.value() = 0;
+          *counter.valueType() = thrift::CounterValueType::COUNTER;
+          *counter.timestamp() = std::time(nullptr);
           counters_.emplace(name, std::make_pair(counter, now));
         }
         auto& counter = counters_[name].first;
-        ++(*counter.value_ref());
+        ++(*counter.value());
         counters_[name].second = now;
-        thriftPub.counterPub_ref()->counters_ref()->emplace(name, counter);
+        thriftPub.counterPub()->counters()->emplace(name, counter);
       }
       // Dump new counter values to the publish socket.
-      *thriftPub.pubType_ref() = thrift::PubType::COUNTER_PUB;
+      *thriftPub.pubType() = thrift::PubType::COUNTER_PUB;
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
     } break;
 
     case thrift::MonitorCommand::LOG_EVENT:
       // simply forward, do not store logs
-      *thriftPub.pubType_ref() = thrift::PubType::EVENT_LOG_PUB;
-      *thriftPub.eventLogPub_ref() = std::move(*thriftReq.eventLog_ref());
+      *thriftPub.pubType() = thrift::PubType::EVENT_LOG_PUB;
+      *thriftPub.eventLogPub() = std::move(*thriftReq.eventLog());
       if (logSampleToMerge_) {
-        for (auto& sample : *thriftPub.eventLogPub_ref()->samples_ref()) {
+        for (auto& sample : *thriftPub.eventLogPub()->samples()) {
           try {
             // throws if this sample doesn't have a timestamp
             // in that case, lets just pass this sample along without appending
@@ -292,7 +291,7 @@ class ZmqMonitor final : public ZmqEventLoop {
       if (eventLogs_.size() >= maxLogEvents_) {
         eventLogs_.pop_front();
       }
-      eventLogs_.push_back(*thriftPub.eventLogPub_ref());
+      eventLogs_.push_back(*thriftPub.eventLogPub());
       monitorPubSock_.sendOne(
           Message::fromThriftObj(thriftPub, serializer_).value());
       break;
@@ -300,7 +299,7 @@ class ZmqMonitor final : public ZmqEventLoop {
     case thrift::MonitorCommand::GET_EVENT_LOGS: {
       thrift::EventLogsResponse thriftEventLogsRep;
       for (auto it = eventLogs_.begin(); it != eventLogs_.end(); ++it) {
-        thriftEventLogsRep.eventLogs_ref()->emplace_back(*it);
+        thriftEventLogsRep.eventLogs()->emplace_back(*it);
       }
       monitorReceiveSock_.sendMultiple(
           requestIdMsg,

@@ -39,7 +39,7 @@ oneShot(Context& context) noexcept {
 
   apache::thrift::CompactSerializer serializer;
   thrift::MonitorRequest thriftReq;
-  *thriftReq.cmd_ref() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
+  *thriftReq.cmd() = thrift::MonitorCommand::DUMP_ALL_COUNTER_DATA;
 
   // send request
 
@@ -50,8 +50,8 @@ oneShot(Context& context) noexcept {
   auto thriftNameValuesRep =
       dealer.recvThriftObj<thrift::CounterValuesResponse>(serializer).value();
   LOG(INFO) << "Current monitor Key Value Pairs";
-  for (auto const& it : *thriftNameValuesRep.counters_ref()) {
-    LOG(INFO) << "        " << it.first << ": " << *it.second.value_ref();
+  for (auto const& it : *thriftNameValuesRep.counters()) {
+    LOG(INFO) << "        " << it.first << ": " << *it.second.value();
   }
 }
 

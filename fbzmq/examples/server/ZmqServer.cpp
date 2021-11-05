@@ -176,7 +176,7 @@ ZmqServer::processMultipleCommand() noexcept {
       "Commands received are: Number `{}`, String `{}` and ThriftObj `{}`",
       intMsg.value(),
       stringMsg.value(),
-      *thriftMsg.value().value_ref());
+      *thriftMsg.value().value());
 
   // send back reply message
   auto replyMsg = fbzmq::Message::from(reply).value();
@@ -199,7 +199,7 @@ ZmqServer::processThriftCommand() noexcept {
 
   const auto& request = maybeThriftObj.value();
   const auto& key = *request.key_ref();
-  const auto value = request.value_ref();
+  const auto value = request.value();
 
   switch (*request.cmd_ref()) {
   case thrift::Command::KEY_SET: {
@@ -225,7 +225,7 @@ ZmqServer::processThriftCommand() noexcept {
       *response.success_ref() = false;
     } else {
       *response.success_ref() = true;
-      response.value_ref() = it->second;
+      response.value() = it->second;
     }
 
     auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
