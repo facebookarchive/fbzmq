@@ -56,7 +56,7 @@ find_library(ZMQ zmq)
 find_package(Threads REQUIRED)
 
 set(REQ_BOOST_COMPONENTS ${REQ_BOOST_COMPONENTS} system thread context filesystem program_options regex)
-find_package(Boost 1.67.0 MODULE
+find_package(Boost 1.65.0 MODULE
   COMPONENTS
     ${REQ_BOOST_COMPONENTS}
   REQUIRED
