@@ -140,7 +140,7 @@ Internally it maintains a dynamic poll-list which is updated only when new
 also maintains internal heap of timeouts ordered on their expiry times.
 
 ## Full documentation
-To understand how to use library, take a look at `examples/` directory. All of
+To understand how to use library, take a look at [`examples/`](https://github.com/facebook/fbzmq/tree/main/fbzmq/examples) directory. All of
 our code is very well documented and refer to appropriate header files for up to
 date and detailed documentation of various APIs/functionalities.
 
