@@ -154,8 +154,8 @@ ZmqClient::makeMultipleRequest() noexcept {
 bool
 ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   thrift::Request request;
-  *request.cmd_ref() = thrift::Command::KEY_SET;
-  *request.key_ref() = key;
+  *request.cmd() = thrift::Command::KEY_SET;
+  *request.key() = key;
   request.value() = value;
 
   fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> reqSock{zmqContext_};
@@ -166,7 +166,7 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
     LOG(ERROR) << "send thrift request failed: " << rc.error();
     return false;
   }
-  VLOG(2) << "Sent KEY_SET command (" << *request.key_ref() << ": "
+  VLOG(2) << "Sent KEY_SET command (" << *request.key() << ": "
           << *request.value() << ")";
 
   auto maybeThriftObj = reqSock.recvThriftObj<thrift::Response>(
@@ -177,7 +177,7 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
   }
 
   const auto& response = maybeThriftObj.value();
-  if (!(*response.success_ref())) {
+  if (!(*response.success())) {
     return false;
   }
 
@@ -187,8 +187,8 @@ ZmqClient::setKeyValue(const std::string& key, int64_t value) noexcept {
 bool
 ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
   thrift::Request request;
-  *request.cmd_ref() = thrift::Command::KEY_GET;
-  *request.key_ref() = key;
+  *request.cmd() = thrift::Command::KEY_GET;
+  *request.key() = key;
 
   fbzmq::Socket<ZMQ_REQ, fbzmq::ZMQ_CLIENT> reqSock{zmqContext_};
   reqSock.connect(fbzmq::SocketUrl{thriftCmdUrl_}).value();
@@ -198,7 +198,7 @@ ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
     LOG(ERROR) << "send thrift request failed: " << rc.error();
     return false;
   }
-  VLOG(2) << "Sent KEY_GET command (" << *request.key_ref() << ")";
+  VLOG(2) << "Sent KEY_GET command (" << *request.key() << ")";
 
   auto maybeThriftObj = reqSock.recvThriftObj<thrift::Response>(
       serializer_, Constants::kReadTimeout);
@@ -208,7 +208,7 @@ ZmqClient::getKey(const std::string& key, int64_t& value) noexcept {
   }
 
   const auto& response = maybeThriftObj.value();
-  if (!(*response.success_ref())) {
+  if (!(*response.success())) {
     return false;
   }
 

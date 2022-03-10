@@ -198,16 +198,16 @@ ZmqServer::processThriftCommand() noexcept {
   }
 
   const auto& request = maybeThriftObj.value();
-  const auto& key = *request.key_ref();
+  const auto& key = *request.key();
   const auto value = request.value();
 
-  switch (*request.cmd_ref()) {
+  switch (*request.cmd()) {
   case thrift::Command::KEY_SET: {
     VLOG(2) << "Received KEY_SET command (" << key << ": " << *value << ")";
     kvStore_[key] = *value;
 
     thrift::Response response;
-    *response.success_ref() = true;
+    *response.success() = true;
     auto rc = thriftCmdSock_.sendThriftObj(response, serializer_);
     if (rc.hasError()) {
       LOG(ERROR) << "Sent response failed: " << rc.error();
@@ -222,9 +222,9 @@ ZmqServer::processThriftCommand() noexcept {
 
     thrift::Response response;
     if (it == kvStore_.end()) {
-      *response.success_ref() = false;
+      *response.success() = false;
     } else {
-      *response.success_ref() = true;
+      *response.success() = true;
       response.value() = it->second;
     }
 
@@ -238,7 +238,7 @@ ZmqServer::processThriftCommand() noexcept {
 
   default: {
     LOG(ERROR) << "Unknown thrift command: "
-               << static_cast<int>(*request.cmd_ref());
+               << static_cast<int>(*request.cmd());
     break;
   }
   }
