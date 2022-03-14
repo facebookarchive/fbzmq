@@ -41,6 +41,7 @@ TEST(SocketMonitor, ConnectSync) {
   // run monitor in this thread
   std::thread t(
       [kServerUrl, &isRunning, &isConnected, &ctx, &client, &messages] {
+        (void)&ctx; // silence clang -Wunused-lambda-capture
         // invoke this callback on every monitor event
         fbzmq::SocketMonitor::CallbackT f =
             [kServerUrl, &messages, &isConnected](

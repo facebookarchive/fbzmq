@@ -723,6 +723,7 @@ TEST(Socket, SendRecvString) {
       {reinterpret_cast<void*>(*rep), 0, ZMQ_POLLIN, 0}};
   fbzmq::poll(pollItems).then([&serializer, &rep, &value](int) {
     rep.recvOne().then([&serializer, &value](fbzmq::Message&& rcvd) {
+      (void)&serializer; // silence clang -Wunused-lambda-capture
       auto rcvdValue = rcvd.read<std::string>();
       EXPECT_EQ(value, rcvdValue.value());
     });
