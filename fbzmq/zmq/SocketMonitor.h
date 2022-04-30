@@ -88,7 +88,7 @@ class SocketMonitor {
   /**
    * event object passed down the PAIR socket to monitor class
    */
-  using EventT = struct {
+  struct EventT {
     uint16_t event;
     int32_t data;
   };
