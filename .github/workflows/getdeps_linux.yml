@@ -105,8 +105,6 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libzmq
     - name: Build bison
       run: python3 build/fbcode_builder/getdeps.py build --no-tests bison
-    - name: Build flex
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build libsodium
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
     - name: Build folly
